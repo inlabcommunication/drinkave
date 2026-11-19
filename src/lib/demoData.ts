@@ -36,17 +36,17 @@ export const menuIniziale: Menu = {
 export const newsIniziali: NewsItem[] = [
   {
     id: 'n1',
-    titolo: 'Giovedì jazz dal vivo',
-    sommario: 'Ogni giovedì dalle 22 un trio jazz suona tra i tavoli.',
-    testo: 'Da questa settimana il giovedì sera diventa la serata del jazz. Un trio dal vivo, luci basse e una drink list dedicata.\n\nPosti limitati: arriva presto e ricordati la parola d’ordine.',
+    titolo: 'Vino & Convivio',
+    sommario: 'Degustazione guidata: il convivio inizia dal calice. Ore 20:30.',
+    testo: 'Una serata lenta, tra calici e racconti. Degustazione guidata con abbinamenti della casa.\n\nPosti limitati: prenota in DM e ricordati la parola d’ordine.',
     categoria: 'Eventi',
     data: ora - giorno,
     pubblicata: true,
   },
   {
     id: 'n2',
-    titolo: 'Nuova drink list d’autunno',
-    sommario: 'Cinque nuovi cocktail con ingredienti di stagione.',
+    titolo: 'Vinili & Convivio',
+    sommario: 'Si suona su vinile, si beve con calma. Sapora il tempo.',
     testo: 'Castagne, fichi, spezie e agrumi invernali: la nuova lista è arrivata. Chiedi al bartender il percorso degustazione.',
     categoria: 'Novità',
     data: ora - 6 * giorno,

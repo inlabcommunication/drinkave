@@ -40,7 +40,7 @@ export default function App() {
       {DEMO && <div className="demo-banner">Modalità demo · i dati restano solo in questo browser</div>}
       <header className="topbar">
         <div className="wrap">
-          <a className="brand" href="#/">Drinkave</a>
+          <a className="brand" href="#/" aria-label="Drinkave, home"><b>Drinkave</b><small>Bere culturale</small></a>
           {!admin && (
             <a className="icon-btn" href="#/parola" aria-label="Parola segreta">
               <KeyRound size={18} />
