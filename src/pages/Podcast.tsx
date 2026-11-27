@@ -4,12 +4,23 @@ import { Deco, Errore, Loading } from '../components/Ui';
 import { backend } from '../lib/backend';
 import { useAsync } from '../lib/useAsync';
 import { formatData } from '../lib/util';
-import { youtubeEmbed, youtubeId, youtubeThumb } from '../lib/youtube';
+import { videoCanale, youtubeEmbed, youtubeId, youtubeThumb } from '../lib/youtube';
 
 export default function PodcastPage() {
-  const { data, errore, caricamento, ricarica } = useAsync(async () =>
-    (await (await backend()).listPodcast()).filter((p) => youtubeId(p.youtubeUrl)),
-  );
+  const { data, errore, caricamento, ricarica } = useAsync(async () => {
+    // Episodi inseriti dal pannello + tutti i video del canale YouTube.
+    // Se lo stesso video c'è in entrambi vale la versione del pannello (titolo e testo personalizzati).
+    const [manuali, canale] = await Promise.all([(await backend()).listPodcast(), videoCanale()]);
+    const visti = new Set<string>();
+    return [...manuali, ...canale]
+      .filter((p) => {
+        const id = youtubeId(p.youtubeUrl);
+        if (!id || visti.has(id)) return false;
+        visti.add(id);
+        return true;
+      })
+      .sort((a, b) => b.data - a.data);
+  });
   const [scelto, setScelto] = useState<string | null>(null);
   const [avviato, setAvviato] = useState(false);
 
