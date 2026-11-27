@@ -1,4 +1,4 @@
-import type { Bottiglia, Menu, NewsItem, Parola, PodcastEpisode } from './types';
+import type { Bottiglia, Evento, Menu, NewsItem, Parola, PodcastEpisode } from './types';
 
 const giorno = 86_400_000;
 const ora = Date.now();
@@ -103,5 +103,34 @@ export const bottiglieIniziali: Bottiglia[] = [
     stato: 'aperta',
     pubblicata: true,
     creata: ora - 3 * giorno,
+  },
+];
+
+const sera = (giorni: number, ore = 21) => {
+  const d = new Date(ora + giorni * giorno);
+  d.setHours(ore, 0, 0, 0);
+  return d.getTime();
+};
+
+export const eventiIniziali: Evento[] = [
+  {
+    id: 'e1',
+    titolo: 'Vino & Convivio',
+    descrizione: 'Degustazione guidata di quattro vini pugliesi con abbinamenti della casa. Il convivio inizia dal calice.',
+    data: sera(3, 20),
+    posti: 20,
+    postiPrenotati: 14,
+    prezzo: 35,
+    pubblicato: true,
+  },
+  {
+    id: 'e2',
+    titolo: 'Vinili & Convivio',
+    descrizione: 'Si suona su vinile, si beve con calma. Selezione jazz e soul.',
+    data: sera(8, 21),
+    posti: 30,
+    postiPrenotati: 6,
+    prezzo: 0,
+    pubblicato: true,
   },
 ];

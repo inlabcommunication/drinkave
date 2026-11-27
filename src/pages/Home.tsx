@@ -1,6 +1,8 @@
-import { Instagram, KeyRound, Martini, Mic, Wine } from 'lucide-react';
+import { CalendarDays, Instagram, KeyRound, Mic, Newspaper, PartyPopper } from 'lucide-react';
 import { NotificheCard } from '../components/NotificheButton';
 import { BottleViz } from '../components/BottleViz';
+import { GiornoBox } from '../components/MiePrenotazioni';
+import { dataEvento } from './Prenota';
 import { Ornament } from '../components/Ui';
 import { backend } from '../lib/backend';
 import { useAsync } from '../lib/useAsync';
@@ -8,6 +10,7 @@ import { euro, formatData } from '../lib/util';
 
 export default function Home() {
   const bottiglia = useAsync(async () => (await (await backend()).listBottiglie()).find((b) => b.stato === 'aperta') ?? null);
+  const evento = useAsync(async () => (await (await backend()).listEventi())[0] ?? null);
   const news = useAsync(async () => (await (await backend()).listNews()).slice(0, 2));
 
   return (
@@ -20,16 +23,35 @@ export default function Home() {
           <a className="btn hero-cta" href="#/area">
             <KeyRound size={16} /> Scopri la parola d’ordine
           </a>
+          <a className="btn ghost hero-cta2" href="#/prenota">
+            <CalendarDays size={16} /> Prenota un tavolo
+          </a>
           <p className="small" style={{ margin: '14px 0 0', color: '#d9b9a8', letterSpacing: '.04em' }}>Questo posto non dovrebbe esistere.</p>
         </div>
 
         <nav className="highlights" aria-label="Sezioni">
-          <a href="#/menu"><span className="ring"><Martini size={22} /></span>Drink</a>
-          <a href="#/bottiglie"><span className="ring"><Wine size={22} /></span>Bottiglie</a>
+          <a href="#/prenota/eventi"><span className="ring"><PartyPopper size={22} /></span>Eventi</a>
+          <a href="#/news"><span className="ring"><Newspaper size={22} /></span>News</a>
           <a href="#/podcast"><span className="ring"><Mic size={22} /></span>Podcast</a>
           <a href="https://www.instagram.com/drinkave_bereculturale/" target="_blank" rel="noopener noreferrer"><span className="ring"><Instagram size={22} /></span>Instagram</a>
         </nav>
       </section>
+
+      {evento.data && (
+        <>
+          <Ornament label="PROSSIMO EVENTO" />
+          <a className="card link pren" href="#/prenota/eventi">
+            <GiornoBox ms={evento.data.data} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h3>{evento.data.titolo}</h3>
+              <div className="muted small">{dataEvento(evento.data.data)}</div>
+              <div className="small" style={{ marginTop: 4, color: 'var(--gold-2)' }}>
+                {evento.data.posti - evento.data.postiPrenotati > 0 ? `${evento.data.posti - evento.data.postiPrenotati} posti liberi · Prenota →` : 'Esaurito'}
+              </div>
+            </div>
+          </a>
+        </>
+      )}
 
       {bottiglia.data && (
         <>

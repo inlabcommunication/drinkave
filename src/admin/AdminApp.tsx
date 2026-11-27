@@ -1,4 +1,4 @@
-import { BellRing, BookOpen, KeyRound, LayoutDashboard, LogOut, Mic, Newspaper, Users, Wine } from 'lucide-react';
+import { BellRing, BookOpen, CalendarDays, KeyRound, LayoutDashboard, LogOut, Mic, Newspaper, Users, Wine } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Loading } from '../components/Ui';
 import { backend, ErroreUtente, type Backend } from '../lib/backend';
@@ -9,10 +9,12 @@ import MenuAdmin from './MenuAdmin';
 import NewsAdmin from './NewsAdmin';
 import NotificheAdmin from './NotificheAdmin';
 import ParolaAdmin from './ParolaAdmin';
+import PrenotazioniAdmin from './PrenotazioniAdmin';
 import PodcastAdmin from './PodcastAdmin';
 
 const sezioni = [
   { id: '', label: 'Panoramica', icon: LayoutDashboard },
+  { id: 'prenotazioni', label: 'Prenotazioni', icon: CalendarDays },
   { id: 'menu', label: 'Menu', icon: BookOpen },
   { id: 'bottiglie', label: 'Bottiglie', icon: Wine },
   { id: 'parola', label: 'Parola', icon: KeyRound },
@@ -41,6 +43,7 @@ export default function AdminApp({ sezione }: { sezione: string }) {
   const Corpo = {
     '': Dashboard,
     menu: MenuAdmin,
+    prenotazioni: PrenotazioniAdmin,
     bottiglie: BottiglieAdmin,
     parola: ParolaAdmin,
     news: NewsAdmin,

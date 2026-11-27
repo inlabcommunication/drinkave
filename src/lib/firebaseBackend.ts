@@ -22,12 +22,13 @@ import {
   updateDoc,
   Timestamp,
   where,
+  orderBy,
   writeBatch,
 } from 'firebase/firestore/lite';
 import type { Backend } from './backend';
 import { ErroreUtente } from './backend';
 import { firebaseConfig, vapidKey } from './config';
-import type { Bottiglia, Cliente, Menu, NewsItem, Parola, PodcastEpisode, Profilo, Quota } from './types';
+import type { Bottiglia, Cliente, Evento, Menu, NewsItem, Parola, PodcastEpisode, Prenotazione, Profilo, Quota } from './types';
 import { emailDaTelefono, normalizzaTelefono, uid as nuovoId } from './util';
 
 const ms = (v: unknown): number =>
@@ -210,6 +211,89 @@ export function creaFirebaseBackend(): Backend {
       return s.docs.map((d) => ({ ...(d.data() as Quota), id: d.id, quando: ms(d.data().quando) })).sort((a, b) => b.quando - a.quando);
     },
 
+    async listEventi(tutti = false) {
+      const q = tutti ? collection(db, 'eventi') : query(collection(db, 'eventi'), where('pubblicato', '==', true));
+      const s = await getDocs(q);
+      const ora = Date.now() - 6 * 3600_000;
+      return s.docs
+        .map((d) => ({ ...(d.data() as Evento), id: d.id }))
+        .filter((e) => tutti || e.data >= ora)
+        .sort((a, b) => a.data - b.data);
+    },
+    async prenotaTavolo(r) {
+      const p = await cliente();
+      await setDoc(doc(db, 'prenotazioni', nuovoId()), {
+        tipo: 'tavolo',
+        uid: p.uid,
+        nome: `${p.nome} ${p.cognome}`.trim(),
+        telefono: p.telefono,
+        data: Math.round(r.data),
+        persone: r.persone,
+        note: r.note.trim().slice(0, 300),
+        eventoId: '',
+        eventoTitolo: '',
+        stato: 'richiesta',
+        creata: serverTimestamp(),
+      });
+    },
+    async prenotaEvento(eventoId, persone, note) {
+      const p = await cliente();
+      const ref = doc(db, 'eventi', eventoId);
+      const pid = nuovoId();
+      try {
+        await runTransaction(db, async (tx) => {
+          const s = await tx.get(ref);
+          if (!s.exists()) throw new ErroreUtente('Evento non trovato.');
+          const e = s.data() as Evento;
+          const liberi = e.posti - e.postiPrenotati;
+          if (liberi <= 0) throw new ErroreUtente('Posti esauriti.');
+          if (persone < 1 || persone > liberi) throw new ErroreUtente(`Sono rimasti solo ${liberi} posti.`);
+          tx.set(doc(db, 'prenotazioni', pid), {
+            tipo: 'evento',
+            uid: p.uid,
+            nome: `${p.nome} ${p.cognome}`.trim(),
+            telefono: p.telefono,
+            data: e.data,
+            persone,
+            note: note.trim().slice(0, 300),
+            eventoId,
+            eventoTitolo: e.titolo,
+            stato: 'confermata',
+            creata: serverTimestamp(),
+          });
+          tx.update(ref, { postiPrenotati: e.postiPrenotati + persone, ultimaPrenotazione: pid });
+        });
+      } catch (e) {
+        if (e instanceof ErroreUtente) throw e;
+        console.error(e);
+        throw new ErroreUtente('Prenotazione non riuscita: qualcuno potrebbe aver preso gli ultimi posti. Riprova.');
+      }
+    },
+    async miePrenotazioni() {
+      const p = await cliente();
+      const s = await getDocs(query(collection(db, 'prenotazioni'), where('uid', '==', p.uid)));
+      return s.docs.map((d) => ({ ...(d.data() as Prenotazione), id: d.id, creata: ms(d.data().creata) })).sort((a, b) => b.data - a.data);
+    },
+    async annullaPrenotazione(pr) {
+      await cliente();
+      const pref = doc(db, 'prenotazioni', pr.id);
+      if (pr.tipo === 'tavolo') {
+        await updateDoc(pref, { stato: 'annullata' });
+        return;
+      }
+      const eref = doc(db, 'eventi', pr.eventoId);
+      await runTransaction(db, async (tx) => {
+        const s = await tx.get(eref);
+        const pp = await tx.get(pref);
+        if (!pp.exists() || pp.data().stato !== 'confermata') throw new ErroreUtente('Prenotazione già annullata.');
+        tx.update(pref, { stato: 'annullata' });
+        if (s.exists()) {
+          const e = s.data() as Evento;
+          tx.update(eref, { postiPrenotati: Math.max(0, e.postiPrenotati - pr.persone), ultimaPrenotazione: pr.id });
+        }
+      });
+    },
+
     async attivaNotifiche() {
       const { getMessaging, getToken, isSupported } = await import('firebase/messaging');
       await auth.authStateReady();
@@ -343,6 +427,49 @@ export function creaFirebaseBackend(): Backend {
       await utenteAdmin();
       const s = await getDocs(query(collection(db, 'quote'), where('bottigliaId', '==', bottigliaId)));
       return s.docs.map((d) => ({ ...(d.data() as Quota), id: d.id, quando: ms(d.data().quando) })).sort((a, b) => a.quando - b.quando);
+    },
+    async saveEvento(e) {
+      await utenteAdmin();
+      const { id, ...dati } = e;
+      const ref = doc(db, 'eventi', id);
+      const base = {
+        titolo: dati.titolo,
+        descrizione: dati.descrizione,
+        immagine: dati.immagine ?? '',
+        data: Math.round(dati.data),
+        posti: dati.posti,
+        prezzo: dati.prezzo,
+        pubblicato: dati.pubblicato,
+      };
+      if ((await getDoc(ref)).exists()) await updateDoc(ref, base);
+      else await setDoc(ref, { ...base, postiPrenotati: 0, ultimaPrenotazione: '' });
+    },
+    async deleteEvento(id) {
+      await utenteAdmin();
+      await deleteDoc(doc(db, 'eventi', id));
+    },
+    async listPrenotazioni(daData) {
+      await utenteAdmin();
+      const s = await getDocs(query(collection(db, 'prenotazioni'), where('data', '>=', Math.round(daData)), orderBy('data')));
+      return s.docs.map((d) => ({ ...(d.data() as Prenotazione), id: d.id, creata: ms(d.data().creata) }));
+    },
+    async setStatoPrenotazione(pr, stato) {
+      await utenteAdmin();
+      const pref = doc(db, 'prenotazioni', pr.id);
+      const liberaPosti = pr.tipo === 'evento' && pr.stato === 'confermata' && (stato === 'annullata' || stato === 'rifiutata');
+      if (!liberaPosti) {
+        await updateDoc(pref, { stato });
+        return;
+      }
+      const eref = doc(db, 'eventi', pr.eventoId);
+      await runTransaction(db, async (tx) => {
+        const s = await tx.get(eref);
+        tx.update(pref, { stato });
+        if (s.exists()) {
+          const e = s.data() as Evento;
+          tx.update(eref, { postiPrenotati: Math.max(0, e.postiPrenotati - pr.persone) });
+        }
+      });
     },
     async inviaNotifica(titolo, testo, link) {
       const u = await utenteAdmin();

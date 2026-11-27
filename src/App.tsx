@@ -1,4 +1,4 @@
-import { BookOpen, Home as HomeIcon, Newspaper, UserRound, Wine } from 'lucide-react';
+import { BookOpen, CalendarDays, Home as HomeIcon, UserRound, Wine } from 'lucide-react';
 import { lazy, Suspense } from 'react';
 import { Loading } from './components/Ui';
 import { DEMO } from './lib/config';
@@ -8,6 +8,7 @@ import MenuPage from './pages/MenuPage';
 import NewsPage from './pages/News';
 import AreaPage from './pages/Area';
 import BottigliePage from './pages/Bottiglie';
+import PrenotaPage from './pages/Prenota';
 import PodcastPage from './pages/Podcast';
 import { useCliente } from './lib/useCliente';
 import Privacy from './pages/Privacy';
@@ -17,8 +18,8 @@ const AdminApp = lazy(() => import('./admin/AdminApp'));
 const tabs = [
   { id: '', label: 'Home', icon: HomeIcon },
   { id: 'menu', label: 'Menu', icon: BookOpen },
+  { id: 'prenota', label: 'Prenota', icon: CalendarDays },
   { id: 'bottiglie', label: 'Bottiglie', icon: Wine },
-  { id: 'news', label: 'News', icon: Newspaper },
   { id: 'area', label: 'Area', icon: UserRound, key: true },
 ];
 
@@ -34,6 +35,7 @@ export default function App() {
     case 'parola':
     case 'area': pagina = <AreaPage />; break;
     case 'bottiglie': pagina = <BottigliePage id={sub} />; break;
+    case 'prenota': pagina = <PrenotaPage sezione={sub} />; break;
     case 'news': pagina = <NewsPage id={sub} />; break;
     case 'podcast': pagina = <PodcastPage />; break;
     case 'privacy': pagina = <Privacy />; break;

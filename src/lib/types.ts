@@ -107,3 +107,42 @@ export interface Quota {
 }
 
 export type PushResult = 'attivate' | 'negate' | 'non-supportate' | 'errore' | 'accedi';
+
+/** Evento prenotabile (posti limitati). */
+export interface Evento {
+  id: string;
+  titolo: string;
+  descrizione: string;
+  immagine?: string;
+  /** data e ora di inizio (millisecondi) */
+  data: number;
+  posti: number;
+  postiPrenotati: number;
+  /** prezzo a persona in euro, 0 = ingresso libero */
+  prezzo: number;
+  pubblicato: boolean;
+}
+
+export type StatoPrenotazione = 'richiesta' | 'confermata' | 'rifiutata' | 'annullata';
+
+export interface Prenotazione {
+  id: string;
+  tipo: 'tavolo' | 'evento';
+  uid: string;
+  nome: string;
+  telefono: string;
+  /** giorno e ora (millisecondi) */
+  data: number;
+  persone: number;
+  note: string;
+  eventoId: string;
+  eventoTitolo: string;
+  stato: StatoPrenotazione;
+  creata: number;
+}
+
+export interface RichiestaTavolo {
+  data: number;
+  persone: number;
+  note: string;
+}

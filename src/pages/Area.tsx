@@ -1,6 +1,7 @@
 import { DoorClosed, Eye, EyeOff, LogOut, Wine } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { BottleViz } from '../components/BottleViz';
+import { MiePrenotazioni } from '../components/MiePrenotazioni';
 import { NotificheCard } from '../components/NotificheButton';
 import { Deco, Loading } from '../components/Ui';
 import { backend, ErroreUtente } from '../lib/backend';
@@ -185,6 +186,9 @@ function AreaProfilo({ p }: { p: Profilo }) {
         ) : <p className="muted">{parola.errore}</p>}
       </div>
       <p className="center muted small">Sussurrala alla porta. Non condividerla.</p>
+
+      <div className="ornament" aria-hidden="true"><span>LE TUE PRENOTAZIONI</span></div>
+      <MiePrenotazioni uid={p.uid} />
 
       <div className="ornament" aria-hidden="true"><span>LE TUE BOTTIGLIE</span></div>
       {dati.caricamento && <Loading />}

@@ -1,5 +1,20 @@
 import { DEMO } from './config';
-import type { Bottiglia, Cliente, Menu, NewsItem, Parola, PodcastEpisode, Profilo, PushResult, Quota, Registrazione } from './types';
+import type {
+  Bottiglia,
+  Cliente,
+  Evento,
+  Menu,
+  NewsItem,
+  Parola,
+  PodcastEpisode,
+  Prenotazione,
+  Profilo,
+  PushResult,
+  Quota,
+  Registrazione,
+  RichiestaTavolo,
+  StatoPrenotazione,
+} from './types';
 
 /** Tutto ciò che l'app sa fare con i dati. Due implementazioni: Firebase (produzione) e demo (browser). */
 export interface Backend {
@@ -18,6 +33,12 @@ export interface Backend {
   listBottiglie(tutte?: boolean): Promise<Bottiglia[]>;
   acquistaParti(bottigliaId: string, parti: number): Promise<Bottiglia>;
   mieQuote(): Promise<Quota[]>;
+  // Prenotazioni
+  listEventi(tutti?: boolean): Promise<Evento[]>;
+  prenotaTavolo(r: RichiestaTavolo): Promise<void>;
+  prenotaEvento(eventoId: string, persone: number, note: string): Promise<void>;
+  miePrenotazioni(): Promise<Prenotazione[]>;
+  annullaPrenotazione(p: Prenotazione): Promise<void>;
   // Notifiche
   attivaNotifiche(): Promise<PushResult>;
   // Gestione (solo admin)
@@ -37,6 +58,10 @@ export interface Backend {
   deleteBottiglia(id: string): Promise<void>;
   setStatoBottiglia(id: string, stato: 'servita'): Promise<void>;
   listQuote(bottigliaId: string): Promise<Quota[]>;
+  saveEvento(e: Evento): Promise<void>;
+  deleteEvento(id: string): Promise<void>;
+  listPrenotazioni(daData: number): Promise<Prenotazione[]>;
+  setStatoPrenotazione(p: Prenotazione, stato: StatoPrenotazione): Promise<void>;
   inviaNotifica(titolo: string, testo: string, link: string): Promise<{ inviate: number; errori: number }>;
 }
 

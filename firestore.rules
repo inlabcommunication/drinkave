@@ -108,6 +108,76 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/bottiglie/$(request.resource.data.bottigliaId)).data.ultimaQuota == quotaId;
     }
 
+    // Eventi: posti limitati. Il cliente può solo prenotare posti liberi o liberare i propri,
+    // sempre insieme alla sua prenotazione (nello stesso passaggio).
+    match /eventi/{id} {
+      allow read: if resource.data.pubblicato == true || isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        isCliente()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['postiPrenotati', 'ultimaPrenotazione'])
+        && request.resource.data.postiPrenotati is int
+        && request.resource.data.ultimaPrenotazione is string
+        && getAfter(/databases/$(database)/documents/prenotazioni/$(request.resource.data.ultimaPrenotazione)).data.uid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/prenotazioni/$(request.resource.data.ultimaPrenotazione)).data.eventoId == id
+        && (
+          // prenotazione nuova
+          (resource.data.pubblicato == true
+            && request.resource.data.postiPrenotati > resource.data.postiPrenotati
+            && request.resource.data.postiPrenotati <= resource.data.posti
+            && !exists(/databases/$(database)/documents/prenotazioni/$(request.resource.data.ultimaPrenotazione))
+            && getAfter(/databases/$(database)/documents/prenotazioni/$(request.resource.data.ultimaPrenotazione)).data.persone
+                 == request.resource.data.postiPrenotati - resource.data.postiPrenotati)
+          ||
+          // annullamento di una propria prenotazione confermata
+          (request.resource.data.postiPrenotati < resource.data.postiPrenotati
+            && get(/databases/$(database)/documents/prenotazioni/$(request.resource.data.ultimaPrenotazione)).data.stato == 'confermata'
+            && getAfter(/databases/$(database)/documents/prenotazioni/$(request.resource.data.ultimaPrenotazione)).data.stato == 'annullata'
+            && getAfter(/databases/$(database)/documents/prenotazioni/$(request.resource.data.ultimaPrenotazione)).data.persone
+                 == resource.data.postiPrenotati - request.resource.data.postiPrenotati)
+        )
+      );
+    }
+
+    // Prenotazioni (tavolo o evento): le vede il cliente che le ha fatte e l'admin.
+    match /prenotazioni/{pid} {
+      function base(d) {
+        return d.keys().hasOnly(['tipo', 'uid', 'nome', 'telefono', 'data', 'persone', 'note', 'eventoId', 'eventoTitolo', 'stato', 'creata'])
+          && d.uid == request.auth.uid
+          && d.telefono == get(/databases/$(database)/documents/clienti/$(request.auth.uid)).data.telefono
+          && str(d.nome, 1, 130)
+          && d.data is int && d.data > request.time.toMillis()
+          && d.persone is int && d.persone >= 1 && d.persone <= 12
+          && str(d.note, 0, 300)
+          && d.creata == request.time;
+      }
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin();
+      allow create: if isCliente() && base(request.resource.data) && (
+        (request.resource.data.tipo == 'tavolo'
+          && request.resource.data.stato == 'richiesta'
+          && request.resource.data.eventoId == ''
+          && request.resource.data.eventoTitolo == '')
+        ||
+        (request.resource.data.tipo == 'evento'
+          && request.resource.data.stato == 'confermata'
+          && str(request.resource.data.eventoTitolo, 1, 120)
+          && getAfter(/databases/$(database)/documents/eventi/$(request.resource.data.eventoId)).data.ultimaPrenotazione == pid
+          && request.resource.data.data == get(/databases/$(database)/documents/eventi/$(request.resource.data.eventoId)).data.data)
+      );
+      allow update: if isAdmin() || (
+        signedIn() && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato'])
+        && request.resource.data.stato == 'annullata'
+        && (resource.data.stato == 'richiesta' || resource.data.stato == 'confermata')
+        && (resource.data.tipo == 'tavolo'
+            || resource.data.stato == 'richiesta'
+            || (getAfter(/databases/$(database)/documents/eventi/$(resource.data.eventoId)).data.ultimaPrenotazione == pid
+                && getAfter(/databases/$(database)/documents/eventi/$(resource.data.eventoId)).data.postiPrenotati
+                     == get(/databases/$(database)/documents/eventi/$(resource.data.eventoId)).data.postiPrenotati - resource.data.persone))
+      );
+    }
+
     // Token per le notifiche push: si possono solo aggiungere; li legge il server (Admin SDK).
     match /pushTokens/{token} {
       allow read: if false;

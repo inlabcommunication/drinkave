@@ -5,13 +5,16 @@ import { formatDataOra } from '../lib/util';
 
 export default function Dashboard({ b }: { b: Backend }) {
   const { data } = useAsync(async () => {
-    const [clienti, news, podcast, parola, menu, bottiglie] = await Promise.all([
+    const oggi = new Date();
+    oggi.setHours(0, 0, 0, 0);
+    const [clienti, news, podcast, parola, menu, bottiglie, prenotazioni] = await Promise.all([
       b.listClienti(),
       b.listNews(true),
       b.listPodcast(true),
       b.getParolaAdmin(),
       b.getMenu(),
       b.listBottiglie(true),
+      b.listPrenotazioni(oggi.getTime()),
     ]);
     const settimana = Date.now() - 7 * 86_400_000;
     return {
@@ -21,6 +24,8 @@ export default function Dashboard({ b }: { b: Backend }) {
       news: news.length,
       podcast: podcast.length,
       voci: menu.categorie.reduce((n, c) => n + c.voci.length, 0),
+      daConfermare: prenotazioni.filter((p) => p.stato === 'richiesta').length,
+      prossime: prenotazioni.filter((p) => p.stato === 'confermata').length,
       bottiglieAperte: bottiglie.filter((x) => x.stato === 'aperta').length,
       bottiglieComplete: bottiglie.filter((x) => x.stato === 'completa').length,
       parola,
@@ -40,6 +45,8 @@ export default function Dashboard({ b }: { b: Backend }) {
     <div className="stack">
       <h2>Panoramica</h2>
       <div className="grid2">
+        {box(data.daConfermare, 'prenotazioni da confermare', '#/gestione/prenotazioni')}
+        {box(data.prossime, 'prenotazioni confermate in arrivo', '#/gestione/prenotazioni')}
         {box(data.clienti, 'clienti iscritti', '#/gestione/clienti')}
         {box(data.nuovi, 'nuovi negli ultimi 7 giorni', '#/gestione/clienti')}
         {box(data.marketing, 'con consenso marketing', '#/gestione/clienti')}

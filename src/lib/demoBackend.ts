@@ -1,7 +1,7 @@
 import type { Backend } from './backend';
 import { ErroreUtente } from './backend';
-import { bottiglieIniziali, menuIniziale, newsIniziali, parolaIniziale, podcastIniziali } from './demoData';
-import type { Bottiglia, Cliente, Menu, NewsItem, Parola, PodcastEpisode, Profilo, Quota } from './types';
+import { bottiglieIniziali, eventiIniziali, menuIniziale, newsIniziali, parolaIniziale, podcastIniziali } from './demoData';
+import type { Bottiglia, Cliente, Evento, Menu, NewsItem, Parola, PodcastEpisode, Prenotazione, Profilo, Quota } from './types';
 import { normalizzaTelefono, uid } from './util';
 
 const K = 'drinkave.demo.';
@@ -37,6 +37,19 @@ export function creaDemoBackend(): Backend {
     return c ? { uid: c.id, nome: c.nome, cognome: c.cognome, telefono: c.telefono, email: c.email, consensoMarketing: c.consensoMarketing, creato: c.creato } : null;
   };
   const notificaCliente = () => ascoltatoriCliente.forEach((cb) => cb(profilo()));
+  const cambiaStato = (pr: Prenotazione, stato: Prenotazione['stato']) => {
+    const lista = leggi<Prenotazione[]>('prenotazioni', []);
+    const x = lista.find((y) => y.id === pr.id);
+    if (!x) return;
+    if (x.tipo === 'evento' && x.stato === 'confermata' && (stato === 'annullata' || stato === 'rifiutata')) {
+      const ev = leggi<Evento[]>('eventi', eventiIniziali);
+      const e = ev.find((y) => y.id === x.eventoId);
+      if (e) e.postiPrenotati = Math.max(0, e.postiPrenotati - x.persone);
+      scrivi('eventi', ev);
+    }
+    x.stato = stato;
+    scrivi('prenotazioni', lista);
+  };
   const richiediAdmin = () => {
     if (!adminCorrente()) throw new ErroreUtente('Accesso non autorizzato.');
   };
@@ -146,6 +159,43 @@ export function creaDemoBackend(): Backend {
       return leggi<Quota[]>('quote', []).filter((q) => q.uid === p.uid).sort((a, b) => b.quando - a.quando);
     },
 
+    async listEventi(tutti = false) {
+      await attesa();
+      const ora = Date.now() - 6 * 3600_000;
+      return leggi<Evento[]>('eventi', eventiIniziali).filter((e) => tutti || (e.pubblicato && e.data >= ora)).sort((a, b) => a.data - b.data);
+    },
+    async prenotaTavolo(r) {
+      await attesa();
+      const p = profilo();
+      if (!p) throw new ErroreUtente('Accedi alla tua area per continuare.');
+      const pr: Prenotazione = { id: uid(), tipo: 'tavolo', uid: p.uid, nome: `${p.nome} ${p.cognome}`, telefono: p.telefono, data: r.data, persone: r.persone, note: r.note, eventoId: '', eventoTitolo: '', stato: 'richiesta', creata: Date.now() };
+      scrivi('prenotazioni', [...leggi<Prenotazione[]>('prenotazioni', []), pr]);
+    },
+    async prenotaEvento(eventoId, persone, note) {
+      await attesa();
+      const p = profilo();
+      if (!p) throw new ErroreUtente('Accedi alla tua area per continuare.');
+      const lista = leggi<Evento[]>('eventi', eventiIniziali);
+      const e = lista.find((x) => x.id === eventoId);
+      if (!e) throw new ErroreUtente('Evento non trovato.');
+      const liberi = e.posti - e.postiPrenotati;
+      if (liberi <= 0) throw new ErroreUtente('Posti esauriti.');
+      if (persone < 1 || persone > liberi) throw new ErroreUtente(`Sono rimasti solo ${liberi} posti.`);
+      e.postiPrenotati += persone;
+      scrivi('eventi', lista);
+      const pr: Prenotazione = { id: uid(), tipo: 'evento', uid: p.uid, nome: `${p.nome} ${p.cognome}`, telefono: p.telefono, data: e.data, persone, note, eventoId, eventoTitolo: e.titolo, stato: 'confermata', creata: Date.now() };
+      scrivi('prenotazioni', [...leggi<Prenotazione[]>('prenotazioni', []), pr]);
+    },
+    async miePrenotazioni() {
+      await attesa();
+      const p = profilo();
+      return p ? leggi<Prenotazione[]>('prenotazioni', []).filter((x) => x.uid === p.uid).sort((a, b) => b.data - a.data) : [];
+    },
+    async annullaPrenotazione(pr) {
+      await attesa();
+      cambiaStato(pr, 'annullata');
+    },
+
     async attivaNotifiche() {
       if (!('Notification' in window)) return 'non-supportate';
       const p = await Notification.requestPermission();
@@ -235,6 +285,26 @@ export function creaDemoBackend(): Backend {
     async listQuote(bottigliaId) {
       richiediAdmin();
       return leggi<Quota[]>('quote', []).filter((q) => q.bottigliaId === bottigliaId).sort((a, b) => a.quando - b.quando);
+    },
+    async saveEvento(e) {
+      richiediAdmin();
+      const lista = leggi<Evento[]>('eventi', eventiIniziali);
+      const i = lista.findIndex((x) => x.id === e.id);
+      if (i >= 0) lista[i] = { ...lista[i], ...e, postiPrenotati: lista[i].postiPrenotati };
+      else lista.push({ ...e, postiPrenotati: 0 });
+      scrivi('eventi', lista);
+    },
+    async deleteEvento(id) {
+      richiediAdmin();
+      scrivi('eventi', leggi<Evento[]>('eventi', eventiIniziali).filter((x) => x.id !== id));
+    },
+    async listPrenotazioni(daData) {
+      richiediAdmin();
+      return leggi<Prenotazione[]>('prenotazioni', []).filter((x) => x.data >= daData).sort((a, b) => a.data - b.data);
+    },
+    async setStatoPrenotazione(pr, stato) {
+      richiediAdmin();
+      cambiaStato(pr, stato);
     },
     async inviaNotifica(titolo, testo) {
       richiediAdmin();
