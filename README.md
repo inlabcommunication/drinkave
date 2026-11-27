@@ -56,7 +56,7 @@ npm run dev
 
 ## Podcast: video del canale YouTube in automatico
 
-La pagina Podcast mostra gli episodi inseriti dal pannello **più** tutti i video del canale YouTube, letti dalla funzione `api/youtube.ts` (risposta in cache per un’ora). Se lo stesso video è anche nel pannello, vale la versione del pannello (titolo e descrizione personalizzati).
+La pagina Podcast mostra gli episodi inseriti dal pannello **più** tutti i video del canale YouTube, letti dalla funzione `api/youtube.ts` (risposta in cache per 10 minuti). Se lo stesso video è anche nel pannello, vale la versione del pannello (titolo e descrizione personalizzati); se nel pannello è in **bozza**, il video non compare nell’app (serve `FIREBASE_SERVICE_ACCOUNT`, già usata per le notifiche).
 
 Variabili d’ambiente su Vercel (tutte facoltative):
 
