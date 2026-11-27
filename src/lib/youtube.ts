@@ -1,3 +1,5 @@
+import type { PodcastEpisode } from './types';
+
 /** Estrae l'ID video da qualunque link YouTube (watch, youtu.be, shorts, live, embed) o da un ID nudo. */
 export function youtubeId(url: string): string | null {
   const s = url.trim();
@@ -28,3 +30,22 @@ export const youtubeThumb = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefa
 /** Player incorporato: resta dentro l'app (niente uscita su YouTube). */
 export const youtubeEmbed = (id: string, autoplay = false) =>
   `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&playsinline=1${autoplay ? '&autoplay=1' : ''}`;
+
+/** Video pubblici del canale YouTube (da /api/youtube). In caso di errore restituisce una lista vuota. */
+export async function videoCanale(): Promise<PodcastEpisode[]> {
+  try {
+    const r = await fetch('/api/youtube');
+    if (!r.ok) return [];
+    const { video } = (await r.json()) as { video?: { videoId: string; titolo: string; descrizione: string; data: number }[] };
+    return (video ?? []).map((v) => ({
+      id: `yt-${v.videoId}`,
+      titolo: v.titolo,
+      descrizione: v.descrizione,
+      youtubeUrl: `https://www.youtube.com/watch?v=${v.videoId}`,
+      data: v.data,
+      pubblicato: true,
+    }));
+  } catch {
+    return [];
+  }
+}
