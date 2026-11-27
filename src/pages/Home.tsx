@@ -1,4 +1,4 @@
-import { CalendarDays, Instagram, KeyRound, Mic, Newspaper, PartyPopper } from 'lucide-react';
+import { CalendarDays, Instagram, KeyRound, Mic, Newspaper, PartyPopper, Wine } from 'lucide-react';
 import { NotificheCard } from '../components/NotificheButton';
 import { BottleViz } from '../components/BottleViz';
 import { GiornoBox } from '../components/MiePrenotazioni';
@@ -30,28 +30,13 @@ export default function Home() {
         </div>
 
         <nav className="highlights" aria-label="Sezioni">
+          <a href="#/bottiglie"><span className="ring"><Wine size={22} /></span>Bottiglie</a>
           <a href="#/prenota/eventi"><span className="ring"><PartyPopper size={22} /></span>Eventi</a>
           <a href="#/news"><span className="ring"><Newspaper size={22} /></span>News</a>
           <a href="#/podcast"><span className="ring"><Mic size={22} /></span>Podcast</a>
           <a href="https://www.instagram.com/drinkave_bereculturale/" target="_blank" rel="noopener noreferrer"><span className="ring"><Instagram size={22} /></span>Instagram</a>
         </nav>
       </section>
-
-      {evento.data && (
-        <>
-          <Ornament label="PROSSIMO EVENTO" />
-          <a className="card link pren" href="#/prenota/eventi">
-            <GiornoBox ms={evento.data.data} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <h3>{evento.data.titolo}</h3>
-              <div className="muted small">{dataEvento(evento.data.data)}</div>
-              <div className="small" style={{ marginTop: 4, color: 'var(--gold-2)' }}>
-                {evento.data.posti - evento.data.postiPrenotati > 0 ? `${evento.data.posti - evento.data.postiPrenotati} posti liberi · Prenota →` : 'Esaurito'}
-              </div>
-            </div>
-          </a>
-        </>
-      )}
 
       {bottiglia.data && (
         <>
@@ -69,6 +54,22 @@ export default function Home() {
           <div className="center" style={{ marginTop: 10 }}>
             <a className="back" href="#/bottiglie">Tutte le bottiglie →</a>
           </div>
+        </>
+      )}
+
+      {evento.data && (
+        <>
+          <Ornament label="PROSSIMO EVENTO" />
+          <a className="card link pren" href="#/prenota/eventi">
+            <GiornoBox ms={evento.data.data} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h3>{evento.data.titolo}</h3>
+              <div className="muted small">{dataEvento(evento.data.data)}</div>
+              <div className="small" style={{ marginTop: 4, color: 'var(--gold-2)' }}>
+                {evento.data.posti - evento.data.postiPrenotati > 0 ? `${evento.data.posti - evento.data.postiPrenotati} posti liberi · Prenota →` : 'Esaurito'}
+              </div>
+            </div>
+          </a>
         </>
       )}
 

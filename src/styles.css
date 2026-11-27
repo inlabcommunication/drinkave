@@ -256,10 +256,10 @@ tr:last-child td { border-bottom: 0; }
 .tagline { font-family: var(--serif); font-style: italic; font-size: 1.35rem; color: #f3e4cf; margin: 18px 0 0; }
 .hero-cta { margin-top: 20px; background: linear-gradient(180deg, var(--gold-2), var(--gold)); border-color: var(--gold-2); color: #2a0606; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
 .hero-cta:hover { background: var(--gold-2); box-shadow: 0 8px 30px rgba(202, 166, 119, .35); }
-.highlights { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 22px auto 0; max-width: 420px; }
+.highlights { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin: 22px auto 0; max-width: 480px; }
 .highlights a { display: flex; flex-direction: column; align-items: center; gap: 8px; text-decoration: none; color: var(--gold-2); font-size: .64rem; letter-spacing: .14em; text-transform: uppercase; }
 .highlights span.ring {
-  width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; color: var(--gold-2);
+  width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; color: var(--gold-2);
   background: radial-gradient(circle at 50% 35%, var(--teal-2), var(--teal));
   box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--gold), 0 6px 16px rgba(0, 0, 0, .45);
 }
