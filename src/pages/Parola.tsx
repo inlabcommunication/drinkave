@@ -37,7 +37,10 @@ export default function ParolaPage() {
   }, []);
 
   function messaggio(e: unknown) {
-    return e instanceof ErroreUtente ? e.message : 'Connessione non riuscita. Riprova tra poco.';
+    if (e instanceof ErroreUtente) return e.message;
+    console.error(e);
+    const code = (e as { code?: string })?.code;
+    return `Connessione non riuscita. Riprova tra poco.${code ? ` (codice: ${code})` : ''}`;
   }
 
   async function invia(e: FormEvent) {
