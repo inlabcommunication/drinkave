@@ -1,4 +1,4 @@
-import { BookOpen, Instagram, KeyRound, Martini, Mic, Newspaper, Wine } from 'lucide-react';
+import { Instagram, KeyRound, Martini, Mic, Wine } from 'lucide-react';
 import { NotificheCard } from '../components/NotificheButton';
 import { Ornament } from '../components/Ui';
 import { backend } from '../lib/backend';
@@ -11,45 +11,23 @@ export default function Home() {
   return (
     <div className="wrap page">
       <section className="hero">
-        <div className="badge-logo">
-          <div className="frame">
-            <h1>Drinkave</h1>
-          </div>
-          <div className="sub">Bere culturale</div>
+        <div className="hero-card">
+          <img className="hero-logo" src="/logo-drinkave.webp" alt="Drinkave · Bere culturale" width="240" height="93" />
+          <p className="tagline">“Non tutti sanno dove siamo.”</p>
+          <div className="eyebrow" style={{ marginTop: 6, color: 'var(--gold)' }}>Speakeasy · Laterza</div>
+          <a className="btn hero-cta" href="#/parola">
+            <KeyRound size={16} /> Scopri la parola d’ordine
+          </a>
+          <p className="small" style={{ margin: '14px 0 0', color: '#d9b9a8', letterSpacing: '.04em' }}>Questo posto non dovrebbe esistere.</p>
         </div>
-        <p className="tagline" style={{ marginTop: 22 }}>“Non tutti sanno dove siamo.”</p>
-        <div className="eyebrow" style={{ marginTop: 6 }}>Speakeasy · Laterza</div>
 
-        <nav className="highlights" aria-label="Scorciatoie">
-          <a href="#/parola"><span className="ring"><KeyRound size={24} /></span>Parola</a>
-          <a href="#/menu"><span className="ring"><Martini size={24} /></span>Drink</a>
-          <a href="#/news"><span className="ring"><Wine size={24} /></span>Convivio</a>
-          <a href="#/podcast"><span className="ring"><Mic size={24} /></span>Podcast</a>
+        <nav className="highlights" aria-label="Sezioni">
+          <a href="#/menu"><span className="ring"><Martini size={22} /></span>Drink</a>
+          <a href="#/news"><span className="ring"><Wine size={22} /></span>Convivio</a>
+          <a href="#/podcast"><span className="ring"><Mic size={22} /></span>Podcast</a>
+          <a href="https://www.instagram.com/drinkave_bereculturale/" target="_blank" rel="noopener noreferrer"><span className="ring"><Instagram size={22} /></span>Instagram</a>
         </nav>
       </section>
-
-      <div className="grid2" style={{ marginTop: 26 }}>
-        <a className="card link tile feature" href="#/parola">
-          <KeyRound size={28} />
-          <h3>Scopri la parola d’ordine</h3>
-          <p>Questo posto non dovrebbe esistere. Iscriviti o accedi: senza la parola la porta resta chiusa.</p>
-        </a>
-        <a className="card link tile" href="#/menu">
-          <BookOpen size={26} />
-          <h3>Menu</h3>
-          <p>Drink e degustazioni.</p>
-        </a>
-        <a className="card link tile" href="#/news">
-          <Newspaper size={26} />
-          <h3>News</h3>
-          <p>Eventi, convivi, novità.</p>
-        </a>
-        <a className="card link tile" href="#/podcast" style={{ gridColumn: '1 / -1' }}>
-          <Mic size={26} />
-          <h3>Podcast</h3>
-          <p>Guarda gli episodi senza uscire dall’app.</p>
-        </a>
-      </div>
 
       {news.data && news.data.length > 0 && (
         <>
