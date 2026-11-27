@@ -6,7 +6,7 @@ App per i clienti (installabile sul telefono) + area di gestione.
 - **Menu** con categorie, prezzi, ingredienti ed etichette.
 - **Parola segreta**: ci si iscrive con nome, cognome, telefono (email facoltativa) oppure si accede con il numero già registrato, e si scopre la parola d’ordine. Su quel dispositivo resta sbloccata.
 - **News**: articoli, eventi, novità (con immagine facoltativa).
-- **Podcast**: episodi da YouTube che si guardano **dentro l’app** (player incorporato, niente salto su YouTube).
+- **Podcast**: episodi da YouTube che si guardano **dentro l’app** (player incorporato, niente salto su YouTube). I video del canale [@Drinkavebereculturale](https://www.youtube.com/@Drinkavebereculturale) compaiono **in automatico** (vedi sotto).
 - **Notifiche push** (Android/desktop subito; su iPhone dopo “Aggiungi alla schermata Home”, iOS 16.4+).
 
 **Gestione** (`/#/gestione`, accesso con email e password)
@@ -53,3 +53,15 @@ npm run dev
 - La parola è “segreta” rispetto a chi non si iscrive: chiunque lasci nome e telefono la vede (è lo scopo). I dati dei clienti invece non sono mai leggibili dal pubblico.
 - L’informativa privacy in `src/pages/Privacy.tsx` è un modello: va completata con i dati del titolare e verificata.
 - Il telefono non viene verificato via SMS: si può aggiungere in seguito (Firebase Phone Auth, a pagamento oltre la soglia gratuita).
+
+## Podcast: video del canale YouTube in automatico
+
+La pagina Podcast mostra gli episodi inseriti dal pannello **più** tutti i video del canale YouTube, letti dalla funzione `api/youtube.ts` (risposta in cache per un’ora). Se lo stesso video è anche nel pannello, vale la versione del pannello (titolo e descrizione personalizzati).
+
+Variabili d’ambiente su Vercel (tutte facoltative):
+
+| Variabile | A cosa serve |
+|---|---|
+| `YOUTUBE_API_KEY` | Chiave *YouTube Data API v3* (Google Cloud). Con la chiave compaiono **tutti** i video del canale; senza, solo gli **ultimi 15** (feed RSS pubblico). |
+| `YOUTUBE_CHANNEL_ID` | ID del canale (`UC…`). Se manca viene ricavato dall’handle. |
+| `YOUTUBE_HANDLE` | Handle del canale, predefinito `@Drinkavebereculturale`. |
