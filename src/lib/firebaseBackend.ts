@@ -322,7 +322,9 @@ export function creaFirebaseBackend(): Backend {
         const a = await getDoc(doc(db, 'admins', user.uid));
         if (!a.exists()) {
           await signOut(auth);
-          throw new ErroreUtente('Questo account non è abilitato alla gestione.');
+          throw new ErroreUtente(
+            `Questo account non è abilitato alla gestione. In Firestore serve la raccolta “admins” con un documento con ID: ${user.uid}`,
+          );
         }
       } catch (e) {
         if (e instanceof ErroreUtente) throw e;
