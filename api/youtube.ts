@@ -2,7 +2,10 @@
 // - Con YOUTUBE_API_KEY (YouTube Data API v3) restituisce TUTTI i video del canale.
 // - Senza chiave usa il feed RSS pubblico di YouTube, che contiene solo gli ultimi 15 video.
 // Canale: YOUTUBE_CHANNEL_ID (UC…) se impostato, altrimenti ricavato dall'handle qui sotto.
+// I video presenti nel pannello come BOZZA vengono esclusi (serve FIREBASE_SERVICE_ACCOUNT).
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
 type Res = ServerResponse & { status: (c: number) => Res; json: (b: unknown) => void };
 
@@ -92,13 +95,35 @@ async function videoDaApi(key: string): Promise<VideoCanale[]> {
   return out;
 }
 
+const idVideo = (url: unknown): string | null => {
+  if (typeof url !== 'string') return null;
+  const s = url.trim();
+  if (/^[\w-]{11}$/.test(s)) return s;
+  const m = s.match(/(?:[?&]v=|youtu\.be\/|\/(?:embed|shorts|live|v)\/)([\w-]{11})/);
+  return m ? m[1] : null;
+};
+
+/** ID dei video che nel pannello sono in bozza: non vanno mostrati nell'app. */
+async function videoInBozza(): Promise<Set<string>> {
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!raw) return new Set();
+  const app = getApps()[0] ?? initializeApp({ credential: cert(JSON.parse(raw)) });
+  const snap = await getFirestore(app).collection('podcast').where('pubblicato', '==', false).get();
+  return new Set(snap.docs.map((d) => idVideo(d.get('youtubeUrl'))).filter((x): x is string => !!x));
+}
+
 export default async function handler(req: IncomingMessage, res: Res) {
   if (req.method !== 'GET') return res.status(405).json({ errore: 'Metodo non consentito' });
   try {
     const key = process.env.YOUTUBE_API_KEY;
-    const video = (key ? await videoDaApi(key) : await videoDaRss()).sort((a, b) => b.data - a.data);
-    // Cache sulla CDN di Vercel: 1 ora, poi aggiorna in background.
-    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+    const [tutti, bozze] = await Promise.all([
+      key ? videoDaApi(key) : videoDaRss(),
+      // Se Firebase non risponde meglio mostrare i video che non mostrare niente.
+      videoInBozza().catch(() => new Set<string>()),
+    ]);
+    const video = tutti.filter((v) => !bozze.has(v.videoId)).sort((a, b) => b.data - a.data);
+    // Cache sulla CDN di Vercel: 10 minuti, poi aggiorna in background.
+    res.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=3600');
     return res.status(200).json({ video });
   } catch {
     res.setHeader('Cache-Control', 'public, s-maxage=300');

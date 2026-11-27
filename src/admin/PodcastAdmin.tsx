@@ -69,7 +69,7 @@ export default function PodcastAdmin({ b }: { b: Backend }) {
           </label>
           <label className="check">
             <input type="checkbox" checked={edit.pubblicato} onChange={(e) => set({ pubblicato: e.target.checked })} />
-            <span>Pubblicato (visibile nell’app)</span>
+            <span>Pubblicato (visibile nell’app; in bozza il video resta nascosto anche se è sul canale)</span>
           </label>
           <label className="check">
             <input type="checkbox" checked={notifica} onChange={(e) => setNotifica(e.target.checked)} />
@@ -100,7 +100,10 @@ export default function PodcastAdmin({ b }: { b: Backend }) {
           <Plus size={16} /> Nuovo episodio
         </button>
       </div>
-      <p className="muted small">Incolla il link YouTube: nell’app il video si guarda direttamente, senza uscire.</p>
+      <p className="muted small">
+        Incolla il link YouTube: nell’app il video si guarda direttamente, senza uscire. I video pubblici del canale compaiono
+        in automatico; per nasconderne uno, aggiungilo qui con lo stesso link e lascialo in <b>bozza</b> (effetto entro 10 minuti).
+      </p>
       {caricamento && <Loading />}
       {data?.length === 0 && <div className="empty">Nessun episodio.</div>}
       {data?.map((p) => {
