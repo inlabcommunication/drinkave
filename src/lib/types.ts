@@ -59,12 +59,51 @@ export interface Registrazione {
   cognome: string;
   telefono: string;
   email?: string;
+  password: string;
   consensoMarketing: boolean;
 }
 
-export interface Membro {
+/** Profilo del cliente loggato. */
+export interface Profilo {
+  uid: string;
   nome: string;
+  cognome: string;
   telefono: string;
+  email?: string;
+  consensoMarketing: boolean;
+  creato: number;
 }
 
-export type PushResult = 'attivate' | 'negate' | 'non-supportate' | 'errore';
+export type StatoBottiglia = 'aperta' | 'completa' | 'servita';
+
+/** "Bottiglia condivisa": si apre solo quando tutte le parti (calici) sono state prese. */
+export interface Bottiglia {
+  id: string;
+  nome: string;
+  categoria: string;
+  descrizione: string;
+  immagine?: string;
+  /** prezzo dell'intera bottiglia in euro */
+  prezzo: number;
+  /** in quante parti (calici) è divisa */
+  parti: number;
+  partiPrese: number;
+  stato: StatoBottiglia;
+  pubblicata: boolean;
+  creata: number;
+}
+
+/** Una parte di bottiglia acquistata da un cliente. */
+export interface Quota {
+  id: string;
+  bottigliaId: string;
+  bottigliaNome: string;
+  uid: string;
+  nome: string;
+  telefono: string;
+  parti: number;
+  importo: number;
+  quando: number;
+}
+
+export type PushResult = 'attivate' | 'negate' | 'non-supportate' | 'errore' | 'accedi';

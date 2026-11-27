@@ -1,14 +1,18 @@
 rules_version = '2';
 // Regole Firestore di Drinkave.
-// - Contenuti (menu, news, podcast): li leggono tutti, li modifica solo l'admin.
-// - Clienti: chiunque può iscriversi, ma solo l'admin vede l'elenco.
-// - Parola segreta: la legge solo chi è iscritto (o è entrato con un numero iscritto) e l'admin.
-// Un admin è un utente con email/password che ha un documento in /admins/{uid} (creato a mano dalla console).
+// - Contenuti (menu, news, podcast, bottiglie): li leggono tutti, li modifica solo l'admin.
+// - Clienti: ognuno ha un account (telefono + password) e vede/modifica solo il proprio profilo.
+// - Parola segreta: la leggono solo i clienti registrati e l'admin.
+// - Bottiglia condivisa: un cliente può solo "prendere calici", con controlli sul conteggio.
+// Un admin è un utente con un documento in /admins/{uid} (creato a mano dalla console).
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function isAdmin() {
       return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    function isCliente() {
+      return signedIn() && exists(/databases/$(database)/documents/clienti/$(request.auth.uid));
     }
     function str(v, min, max) { return v is string && v.size() >= min && v.size() <= max; }
     function tel(v) { return v is string && v.matches('^\\+[0-9]{8,15}$'); }
@@ -33,50 +37,75 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Iscrizione: va creata insieme a /telefoni/{numero} nello stesso batch.
+    // Profilo cliente: il telefono deve corrispondere all'account con cui si è entrati.
     match /clienti/{uid} {
-      allow read, delete: if isAdmin();
-      allow update: if false;
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow delete: if isAdmin();
       allow create: if signedIn() && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['nome', 'cognome', 'telefono', 'email', 'consensoMarketing', 'creato'])
         && str(request.resource.data.nome, 1, 60)
         && str(request.resource.data.cognome, 1, 60)
         && tel(request.resource.data.telefono)
+        && request.auth.token.email == request.resource.data.telefono.replace('[+]', '') + '@clienti.drinkave.app'
         && str(request.resource.data.email, 0, 120)
         && request.resource.data.consensoMarketing is bool
-        && request.resource.data.creato == request.time
-        && getAfter(/databases/$(database)/documents/telefoni/$(request.resource.data.telefono)).data.uid == uid;
-    }
-
-    // Indice dei numeri iscritti: nessuno lo legge, serve solo alle regole.
-    match /telefoni/{numero} {
-      allow read: if false;
-      allow delete: if isAdmin();
-      allow update: if false;
-      allow create: if signedIn() && tel(numero)
-        && request.resource.data.keys().hasOnly(['uid'])
-        && request.resource.data.uid == request.auth.uid
-        && existsAfter(/databases/$(database)/documents/clienti/$(request.auth.uid));
-    }
-
-    // "Accedi" da un altro dispositivo: consentito solo se il numero è iscritto.
-    match /accessi/{uid} {
-      allow read: if isAdmin();
-      allow create, update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['telefono', 'quando'])
-        && tel(request.resource.data.telefono)
-        && request.resource.data.quando == request.time
-        && exists(/databases/$(database)/documents/telefoni/$(request.resource.data.telefono));
-      allow delete: if isAdmin();
+        && request.resource.data.creato == request.time;
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'cognome', 'email', 'consensoMarketing'])
+        && str(request.resource.data.nome, 1, 60)
+        && str(request.resource.data.cognome, 1, 60)
+        && str(request.resource.data.email, 0, 120)
+        && request.resource.data.consensoMarketing is bool;
     }
 
     match /segreto/{id} {
-      allow read: if isAdmin()
-        || (signedIn() && exists(/databases/$(database)/documents/clienti/$(request.auth.uid)))
-        || (signedIn()
-            && exists(/databases/$(database)/documents/accessi/$(request.auth.uid))
-            && exists(/databases/$(database)/documents/telefoni/$(get(/databases/$(database)/documents/accessi/$(request.auth.uid)).data.telefono)));
+      allow read: if isAdmin() || isCliente();
       allow write: if isAdmin();
+    }
+
+    // Bottiglia condivisa. Il cliente può solo aumentare partiPrese, insieme alla creazione
+    // della sua quota (nello stesso passaggio), senza superare il numero di parti.
+    match /bottiglie/{id} {
+      allow read: if resource.data.pubblicata == true || isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        isCliente()
+        && resource.data.pubblicata == true
+        && resource.data.stato == 'aperta'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['partiPrese', 'stato', 'ultimaQuota'])
+        && request.resource.data.partiPrese is int
+        && request.resource.data.partiPrese > resource.data.partiPrese
+        && request.resource.data.partiPrese <= resource.data.parti
+        && ((request.resource.data.partiPrese == resource.data.parti && request.resource.data.stato == 'completa')
+            || (request.resource.data.partiPrese < resource.data.parti && request.resource.data.stato == 'aperta'))
+        && request.resource.data.ultimaQuota is string
+        && !exists(/databases/$(database)/documents/quote/$(request.resource.data.ultimaQuota))
+        && getAfter(/databases/$(database)/documents/quote/$(request.resource.data.ultimaQuota)).data.uid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/quote/$(request.resource.data.ultimaQuota)).data.bottigliaId == id
+        && getAfter(/databases/$(database)/documents/quote/$(request.resource.data.ultimaQuota)).data.parti
+             == request.resource.data.partiPrese - resource.data.partiPrese
+      );
+    }
+
+    // Calici presi da un cliente: li vede lui e l'admin.
+    match /quote/{quotaId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update: if false;
+      allow delete: if isAdmin();
+      allow create: if isCliente()
+        && request.resource.data.keys().hasOnly(['bottigliaId', 'bottigliaNome', 'uid', 'nome', 'telefono', 'parti', 'importo', 'quando'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.telefono == get(/databases/$(database)/documents/clienti/$(request.auth.uid)).data.telefono
+        && str(request.resource.data.nome, 1, 130)
+        && str(request.resource.data.bottigliaNome, 1, 120)
+        && request.resource.data.parti is int && request.resource.data.parti >= 1
+        && request.resource.data.importo is number
+        && math.abs(request.resource.data.importo
+             - getAfter(/databases/$(database)/documents/bottiglie/$(request.resource.data.bottigliaId)).data.prezzo
+               / getAfter(/databases/$(database)/documents/bottiglie/$(request.resource.data.bottigliaId)).data.parti
+               * request.resource.data.parti) < 0.011
+        && request.resource.data.quando == request.time
+        && getAfter(/databases/$(database)/documents/bottiglie/$(request.resource.data.bottigliaId)).data.ultimaQuota == quotaId;
     }
 
     // Token per le notifiche push: si possono solo aggiungere; li legge il server (Admin SDK).

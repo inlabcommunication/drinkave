@@ -1,7 +1,7 @@
 import type { Backend } from './backend';
 import { ErroreUtente } from './backend';
-import { menuIniziale, newsIniziali, parolaIniziale, podcastIniziali } from './demoData';
-import type { Cliente, Menu, NewsItem, Parola, PodcastEpisode } from './types';
+import { bottiglieIniziali, menuIniziale, newsIniziali, parolaIniziale, podcastIniziali } from './demoData';
+import type { Bottiglia, Cliente, Menu, NewsItem, Parola, PodcastEpisode, Profilo, Quota } from './types';
 import { normalizzaTelefono, uid } from './util';
 
 const K = 'drinkave.demo.';
@@ -30,6 +30,13 @@ export function creaDemoBackend(): Backend {
   const ascoltatori = new Set<(a: { email: string } | null) => void>();
   const adminCorrente = () => leggi<{ email: string } | null>('admin', null);
   const notifica = () => ascoltatori.forEach((cb) => cb(adminCorrente()));
+  const ascoltatoriCliente = new Set<(p: Profilo | null) => void>();
+  const profilo = (): Profilo | null => {
+    const id = leggi<string | null>('sessione', null);
+    const c = id ? leggi<Cliente[]>('clienti', []).find((x) => x.id === id) : undefined;
+    return c ? { uid: c.id, nome: c.nome, cognome: c.cognome, telefono: c.telefono, email: c.email, consensoMarketing: c.consensoMarketing, creato: c.creato } : null;
+  };
+  const notificaCliente = () => ascoltatoriCliente.forEach((cb) => cb(profilo()));
   const richiediAdmin = () => {
     if (!adminCorrente()) throw new ErroreUtente('Accesso non autorizzato.');
   };
@@ -55,29 +62,88 @@ export function creaDemoBackend(): Backend {
     async registra(r) {
       await attesa();
       const telefono = normalizzaTelefono(r.telefono);
-      const clienti = leggi<Cliente[]>('clienti', []);
-      const giaIscritto = clienti.some((c) => c.telefono === telefono);
-      if (!giaIscritto) {
-        clienti.push({
-          id: uid(),
-          nome: r.nome.trim(),
-          cognome: r.cognome.trim(),
-          telefono,
-          email: r.email?.trim() || undefined,
-          consensoMarketing: r.consensoMarketing,
-          creato: Date.now(),
-        });
-        scrivi('clienti', clienti);
-      }
-      return { parola: leggi<Parola>('parola', parolaIniziale), giaIscritto };
+      const clienti = leggi<(Cliente & { password: string })[]>('clienti', []);
+      if (clienti.some((c) => c.telefono === telefono)) throw new ErroreUtente('Questo numero è già registrato: usa “Accedi”.');
+      if (r.password.length < 6) throw new ErroreUtente('La password deve avere almeno 6 caratteri.');
+      const c = {
+        id: uid(),
+        nome: r.nome.trim(),
+        cognome: r.cognome.trim(),
+        telefono,
+        email: r.email?.trim() || undefined,
+        consensoMarketing: r.consensoMarketing,
+        creato: Date.now(),
+        password: r.password,
+      };
+      scrivi('clienti', [...clienti, c]);
+      scrivi('sessione', c.id);
+      notificaCliente();
     },
-    async accedi(tel) {
+    async login(tel, password) {
       await attesa();
       const telefono = normalizzaTelefono(tel);
-      if (!leggi<Cliente[]>('clienti', []).some((c) => c.telefono === telefono)) {
-        throw new ErroreUtente('Numero non trovato. Iscriviti per scoprire la parola.');
+      const c = leggi<(Cliente & { password: string })[]>('clienti', []).find((x) => x.telefono === telefono);
+      if (!c || c.password !== password) throw new ErroreUtente('Telefono o password non corretti.');
+      scrivi('sessione', c.id);
+      notificaCliente();
+    },
+    async logout() {
+      try {
+        localStorage.removeItem(K + 'sessione');
+      } catch {
+        /* */
       }
+      notificaCliente();
+    },
+    onCliente(cb) {
+      ascoltatoriCliente.add(cb);
+      cb(profilo());
+      return () => ascoltatoriCliente.delete(cb);
+    },
+    async getParola() {
+      await attesa();
+      if (!profilo()) throw new ErroreUtente('Accedi alla tua area per continuare.');
       return leggi<Parola>('parola', parolaIniziale);
+    },
+
+    async listBottiglie(tutte = false) {
+      await attesa();
+      return leggi<Bottiglia[]>('bottiglie', bottiglieIniziali)
+        .filter((b) => tutte || b.pubblicata)
+        .sort((a, b) => b.creata - a.creata);
+    },
+    async acquistaParti(id, parti) {
+      await attesa();
+      const p = profilo();
+      if (!p) throw new ErroreUtente('Accedi alla tua area per continuare.');
+      const lista = leggi<Bottiglia[]>('bottiglie', bottiglieIniziali);
+      const b = lista.find((x) => x.id === id);
+      if (!b) throw new ErroreUtente('Bottiglia non trovata.');
+      const rimaste = b.parti - b.partiPrese;
+      if (b.stato !== 'aperta' || rimaste <= 0) throw new ErroreUtente('Questa bottiglia è già completa.');
+      if (parti < 1 || parti > rimaste) throw new ErroreUtente(`Sono rimasti solo ${rimaste} calici.`);
+      b.partiPrese += parti;
+      b.stato = b.partiPrese === b.parti ? 'completa' : 'aperta';
+      scrivi('bottiglie', lista);
+      const q: Quota = {
+        id: uid(),
+        bottigliaId: id,
+        bottigliaNome: b.nome,
+        uid: p.uid,
+        nome: `${p.nome} ${p.cognome}`,
+        telefono: p.telefono,
+        parti,
+        importo: Math.round((b.prezzo / b.parti) * parti * 100) / 100,
+        quando: Date.now(),
+      };
+      scrivi('quote', [...leggi<Quota[]>('quote', []), q]);
+      return { ...b };
+    },
+    async mieQuote() {
+      await attesa();
+      const p = profilo();
+      if (!p) return [];
+      return leggi<Quota[]>('quote', []).filter((q) => q.uid === p.uid).sort((a, b) => b.quando - a.quando);
     },
 
     async attivaNotifiche() {
@@ -142,11 +208,33 @@ export function creaDemoBackend(): Backend {
     },
     async listClienti() {
       richiediAdmin();
-      return leggi<Cliente[]>('clienti', []).sort((a, b) => b.creato - a.creato);
+      return leggi<(Cliente & { password?: string })[]>('clienti', [])
+        .map(({ password: _p, ...c }) => c)
+        .sort((a, b) => b.creato - a.creato);
     },
     async deleteCliente(c) {
       richiediAdmin();
       scrivi('clienti', leggi<Cliente[]>('clienti', []).filter((x) => x.id !== c.id));
+    },
+    async saveBottiglia(b) {
+      richiediAdmin();
+      const lista = leggi<Bottiglia[]>('bottiglie', bottiglieIniziali);
+      const i = lista.findIndex((x) => x.id === b.id);
+      if (i >= 0) lista[i] = { ...lista[i], ...b, partiPrese: lista[i].partiPrese, stato: lista[i].stato };
+      else lista.push({ ...b, partiPrese: 0, stato: 'aperta', creata: Date.now() });
+      scrivi('bottiglie', lista);
+    },
+    async deleteBottiglia(id) {
+      richiediAdmin();
+      scrivi('bottiglie', leggi<Bottiglia[]>('bottiglie', bottiglieIniziali).filter((x) => x.id !== id));
+    },
+    async setStatoBottiglia(id, stato) {
+      richiediAdmin();
+      scrivi('bottiglie', leggi<Bottiglia[]>('bottiglie', bottiglieIniziali).map((x) => (x.id === id ? { ...x, stato } : x)));
+    },
+    async listQuote(bottigliaId) {
+      richiediAdmin();
+      return leggi<Quota[]>('quote', []).filter((q) => q.bottigliaId === bottigliaId).sort((a, b) => a.quando - b.quando);
     },
     async inviaNotifica(titolo, testo) {
       richiediAdmin();

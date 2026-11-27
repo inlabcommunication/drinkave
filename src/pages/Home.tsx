@@ -1,11 +1,13 @@
 import { Instagram, KeyRound, Martini, Mic, Wine } from 'lucide-react';
 import { NotificheCard } from '../components/NotificheButton';
+import { BottleViz } from '../components/BottleViz';
 import { Ornament } from '../components/Ui';
 import { backend } from '../lib/backend';
 import { useAsync } from '../lib/useAsync';
-import { formatData } from '../lib/util';
+import { euro, formatData } from '../lib/util';
 
 export default function Home() {
+  const bottiglia = useAsync(async () => (await (await backend()).listBottiglie()).find((b) => b.stato === 'aperta') ?? null);
   const news = useAsync(async () => (await (await backend()).listNews()).slice(0, 2));
 
   return (
@@ -15,7 +17,7 @@ export default function Home() {
           <img className="hero-logo" src="/logo-drinkave.webp" alt="Drinkave · Bere culturale" width="240" height="93" />
           <p className="tagline">“Non tutti sanno dove siamo.”</p>
           <div className="eyebrow" style={{ marginTop: 6, color: 'var(--gold)' }}>Speakeasy · Laterza</div>
-          <a className="btn hero-cta" href="#/parola">
+          <a className="btn hero-cta" href="#/area">
             <KeyRound size={16} /> Scopri la parola d’ordine
           </a>
           <p className="small" style={{ margin: '14px 0 0', color: '#d9b9a8', letterSpacing: '.04em' }}>Questo posto non dovrebbe esistere.</p>
@@ -23,11 +25,30 @@ export default function Home() {
 
         <nav className="highlights" aria-label="Sezioni">
           <a href="#/menu"><span className="ring"><Martini size={22} /></span>Drink</a>
-          <a href="#/news"><span className="ring"><Wine size={22} /></span>Convivio</a>
+          <a href="#/bottiglie"><span className="ring"><Wine size={22} /></span>Bottiglie</a>
           <a href="#/podcast"><span className="ring"><Mic size={22} /></span>Podcast</a>
           <a href="https://www.instagram.com/drinkave_bereculturale/" target="_blank" rel="noopener noreferrer"><span className="ring"><Instagram size={22} /></span>Instagram</a>
         </nav>
       </section>
+
+      {bottiglia.data && (
+        <>
+          <Ornament label="BOTTIGLIA CONDIVISA" />
+          <a className="card link bottle-card" href={`#/bottiglie/${bottiglia.data.id}`}>
+            <BottleViz parti={bottiglia.data.parti} prese={bottiglia.data.partiPrese} categoria={bottiglia.data.categoria} nome={bottiglia.data.nome} size={110} />
+            <div className="bottle-info">
+              <div className="meta">{bottiglia.data.categoria}</div>
+              <h3>{bottiglia.data.nome}</h3>
+              <div className="prezzo-calice">{euro(bottiglia.data.prezzo / bottiglia.data.parti)} <span>a calice</span></div>
+              <div className="progress" aria-hidden="true"><span style={{ width: `${(bottiglia.data.partiPrese / bottiglia.data.parti) * 100}%` }} /></div>
+              <div className="muted small">Mancano {bottiglia.data.parti - bottiglia.data.partiPrese} calici per stapparla</div>
+            </div>
+          </a>
+          <div className="center" style={{ marginTop: 10 }}>
+            <a className="back" href="#/bottiglie">Tutte le bottiglie →</a>
+          </div>
+        </>
+      )}
 
       {news.data && news.data.length > 0 && (
         <>

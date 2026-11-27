@@ -1,5 +1,5 @@
 import { DEMO } from './config';
-import type { Cliente, Menu, NewsItem, Parola, PodcastEpisode, PushResult, Registrazione } from './types';
+import type { Bottiglia, Cliente, Menu, NewsItem, Parola, PodcastEpisode, Profilo, PushResult, Quota, Registrazione } from './types';
 
 /** Tutto ciò che l'app sa fare con i dati. Due implementazioni: Firebase (produzione) e demo (browser). */
 export interface Backend {
@@ -8,9 +8,16 @@ export interface Backend {
   getMenu(): Promise<Menu>;
   listNews(tutte?: boolean): Promise<NewsItem[]>;
   listPodcast(tutti?: boolean): Promise<PodcastEpisode[]>;
-  // Parola segreta (clienti)
-  registra(r: Registrazione): Promise<{ parola: Parola; giaIscritto: boolean }>;
-  accedi(telefono: string): Promise<Parola>;
+  // Account cliente (telefono + password) e area personale
+  registra(r: Registrazione): Promise<void>;
+  login(telefono: string, password: string): Promise<void>;
+  logout(): Promise<void>;
+  onCliente(cb: (p: Profilo | null) => void): () => void;
+  getParola(): Promise<Parola>;
+  // Bottiglia condivisa
+  listBottiglie(tutte?: boolean): Promise<Bottiglia[]>;
+  acquistaParti(bottigliaId: string, parti: number): Promise<Bottiglia>;
+  mieQuote(): Promise<Quota[]>;
   // Notifiche
   attivaNotifiche(): Promise<PushResult>;
   // Gestione (solo admin)
@@ -26,6 +33,10 @@ export interface Backend {
   saveParola(p: Parola): Promise<void>;
   listClienti(): Promise<Cliente[]>;
   deleteCliente(c: Cliente): Promise<void>;
+  saveBottiglia(b: Bottiglia): Promise<void>;
+  deleteBottiglia(id: string): Promise<void>;
+  setStatoBottiglia(id: string, stato: 'servita'): Promise<void>;
+  listQuote(bottigliaId: string): Promise<Quota[]>;
   inviaNotifica(titolo: string, testo: string, link: string): Promise<{ inviate: number; errori: number }>;
 }
 

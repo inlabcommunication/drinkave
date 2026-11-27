@@ -1,4 +1,4 @@
-import type { Menu, NewsItem, Parola, PodcastEpisode } from './types';
+import type { Bottiglia, Menu, NewsItem, Parola, PodcastEpisode } from './types';
 
 const giorno = 86_400_000;
 const ora = Date.now();
@@ -66,3 +66,42 @@ export const podcastIniziali: PodcastEpisode[] = [
 ];
 
 export const parolaIniziale: Parola = { parola: 'Gatsby', nota: 'Valida fino a domenica', aggiornata: ora };
+
+export const bottiglieIniziali: Bottiglia[] = [
+  {
+    id: 'b1',
+    nome: 'Primitivo di Manduria Riserva',
+    categoria: 'Vino rosso',
+    descrizione: 'Rosso pugliese pieno e caldo, note di prugna, spezie e cacao.',
+    prezzo: 60,
+    parti: 6,
+    partiPrese: 4,
+    stato: 'aperta',
+    pubblicata: true,
+    creata: ora - giorno,
+  },
+  {
+    id: 'b2',
+    nome: 'Rum Agricole 12 anni',
+    categoria: 'Distillato',
+    descrizione: 'Rum da canna fresca invecchiato in botti di rovere: vaniglia, tabacco, frutta secca.',
+    prezzo: 90,
+    parti: 6,
+    partiPrese: 1,
+    stato: 'aperta',
+    pubblicata: true,
+    creata: ora - 2 * giorno,
+  },
+  {
+    id: 'b3',
+    nome: 'Franciacorta Brut',
+    categoria: 'Bollicine',
+    descrizione: 'Metodo classico, perlage fine, crosta di pane e agrumi.',
+    prezzo: 48,
+    parti: 6,
+    partiPrese: 0,
+    stato: 'aperta',
+    pubblicata: true,
+    creata: ora - 3 * giorno,
+  },
+];

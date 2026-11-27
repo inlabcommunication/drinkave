@@ -5,12 +5,13 @@ import { formatDataOra } from '../lib/util';
 
 export default function Dashboard({ b }: { b: Backend }) {
   const { data } = useAsync(async () => {
-    const [clienti, news, podcast, parola, menu] = await Promise.all([
+    const [clienti, news, podcast, parola, menu, bottiglie] = await Promise.all([
       b.listClienti(),
       b.listNews(true),
       b.listPodcast(true),
       b.getParolaAdmin(),
       b.getMenu(),
+      b.listBottiglie(true),
     ]);
     const settimana = Date.now() - 7 * 86_400_000;
     return {
@@ -20,6 +21,8 @@ export default function Dashboard({ b }: { b: Backend }) {
       news: news.length,
       podcast: podcast.length,
       voci: menu.categorie.reduce((n, c) => n + c.voci.length, 0),
+      bottiglieAperte: bottiglie.filter((x) => x.stato === 'aperta').length,
+      bottiglieComplete: bottiglie.filter((x) => x.stato === 'completa').length,
       parola,
     };
   });
@@ -40,6 +43,8 @@ export default function Dashboard({ b }: { b: Backend }) {
         {box(data.clienti, 'clienti iscritti', '#/gestione/clienti')}
         {box(data.nuovi, 'nuovi negli ultimi 7 giorni', '#/gestione/clienti')}
         {box(data.marketing, 'con consenso marketing', '#/gestione/clienti')}
+        {box(data.bottiglieAperte, 'bottiglie in condivisione', '#/gestione/bottiglie')}
+        {box(data.bottiglieComplete, 'bottiglie complete da stappare', '#/gestione/bottiglie')}
         {box(data.voci, 'voci nel menu', '#/gestione/menu')}
         {box(data.news, 'news', '#/gestione/news')}
         {box(data.podcast, 'episodi podcast', '#/gestione/podcast')}

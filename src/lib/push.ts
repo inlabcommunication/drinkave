@@ -21,4 +21,5 @@ export const messaggioPush: Record<PushResult, string> = {
   negate: 'Notifiche bloccate. Puoi riattivarle dalle impostazioni del browser.',
   'non-supportate': 'Questo browser non supporta le notifiche.',
   errore: 'Non è stato possibile attivare le notifiche. Riprova più tardi.',
+  accedi: 'Accedi alla tua area per attivare le notifiche.',
 };

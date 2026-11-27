@@ -1,8 +1,9 @@
 import { initializeApp } from 'firebase/app';
 import {
+  createUserWithEmailAndPassword,
+  deleteUser,
   getAuth,
   onAuthStateChanged,
-  signInAnonymously,
   signInWithEmailAndPassword,
   signOut,
   type User,
@@ -15,8 +16,10 @@ import {
   getDocs,
   getFirestore,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
+  updateDoc,
   Timestamp,
   where,
   writeBatch,
@@ -24,8 +27,8 @@ import {
 import type { Backend } from './backend';
 import { ErroreUtente } from './backend';
 import { firebaseConfig, vapidKey } from './config';
-import type { Cliente, Menu, NewsItem, Parola, PodcastEpisode } from './types';
-import { normalizzaTelefono } from './util';
+import type { Bottiglia, Cliente, Menu, NewsItem, Parola, PodcastEpisode, Profilo, Quota } from './types';
+import { emailDaTelefono, normalizzaTelefono, uid as nuovoId } from './util';
 
 const ms = (v: unknown): number =>
   v instanceof Timestamp ? v.toMillis() : typeof v === 'number' ? v : Date.now();
@@ -35,11 +38,42 @@ export function creaFirebaseBackend(): Backend {
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  /** Ogni visitatore ha una sessione anonima: serve alle regole Firestore per riconoscere gli iscritti. */
-  async function utente(): Promise<User> {
+  const ascoltatoriCliente = new Set<(p: Profilo | null) => void>();
+  let profiloCorrente: Profilo | null | undefined;
+
+  async function caricaProfilo(u: User | null): Promise<Profilo | null> {
+    if (!u || u.isAnonymous || !u.email?.endsWith('@clienti.drinkave.app')) return null;
+    try {
+      const s = await getDoc(doc(db, 'clienti', u.uid));
+      if (!s.exists()) return null;
+      const x = s.data();
+      return {
+        uid: u.uid,
+        nome: x.nome,
+        cognome: x.cognome,
+        telefono: x.telefono,
+        email: x.email || undefined,
+        consensoMarketing: !!x.consensoMarketing,
+        creato: ms(x.creato),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async function aggiornaProfilo() {
     await auth.authStateReady();
-    if (auth.currentUser) return auth.currentUser;
-    return (await signInAnonymously(auth)).user;
+    profiloCorrente = await caricaProfilo(auth.currentUser);
+    ascoltatoriCliente.forEach((cb) => cb(profiloCorrente ?? null));
+    return profiloCorrente;
+  }
+
+  onAuthStateChanged(auth, () => void aggiornaProfilo());
+
+  async function cliente(): Promise<Profilo> {
+    const p = profiloCorrente === undefined ? await aggiornaProfilo() : profiloCorrente;
+    if (!p) throw new ErroreUtente('Accedi alla tua area per continuare.');
+    return p;
   }
 
   async function utenteAdmin(): Promise<User> {
@@ -54,17 +88,6 @@ export function creaFirebaseBackend(): Backend {
     if (!s.exists()) return { parola: '—', nota: 'La parola non è ancora stata impostata.', aggiornata: Date.now() };
     const d = s.data();
     return { parola: d.parola, nota: d.nota, aggiornata: ms(d.aggiornata) };
-  }
-
-  async function accedi(tel: string): Promise<Parola> {
-    const u = await utente();
-    const telefono = normalizzaTelefono(tel);
-    try {
-      await setDoc(doc(db, 'accessi', u.uid), { telefono, quando: serverTimestamp() });
-    } catch {
-      throw new ErroreUtente('Numero non trovato. Iscriviti per scoprire la parola.');
-    }
-    return leggiParola();
   }
 
   return {
@@ -86,30 +109,111 @@ export function creaFirebaseBackend(): Backend {
     },
 
     async registra(r) {
-      const u = await utente();
       const telefono = normalizzaTelefono(r.telefono);
-      const batch = writeBatch(db);
-      batch.set(doc(db, 'clienti', u.uid), {
-        nome: r.nome.trim(),
-        cognome: r.cognome.trim(),
-        telefono,
-        email: r.email?.trim() || '',
-        consensoMarketing: r.consensoMarketing,
-        creato: serverTimestamp(),
-      });
-      batch.set(doc(db, 'telefoni', telefono), { uid: u.uid });
+      let user: User;
       try {
-        await batch.commit();
-        return { parola: await leggiParola(), giaIscritto: false };
-      } catch {
-        // Numero già registrato (o questo dispositivo è già iscritto): si entra con il telefono.
-        return { parola: await accedi(telefono), giaIscritto: true };
+        user = (await createUserWithEmailAndPassword(auth, emailDaTelefono(telefono), r.password)).user;
+      } catch (e) {
+        const code = (e as { code?: string }).code ?? '';
+        if (code.includes('email-already-in-use')) throw new ErroreUtente('Questo numero è già registrato: usa “Accedi”.');
+        if (code.includes('weak-password')) throw new ErroreUtente('La password deve avere almeno 6 caratteri.');
+        if (code.includes('operation-not-allowed') || code.includes('admin-restricted')) {
+          throw new ErroreUtente('Registrazioni non attive: abilita “Email/password” in Firebase Authentication.');
+        }
+        throw e;
+      }
+      try {
+        await setDoc(doc(db, 'clienti', user.uid), {
+          nome: r.nome.trim(),
+          cognome: r.cognome.trim(),
+          telefono,
+          email: r.email?.trim() || '',
+          consensoMarketing: r.consensoMarketing,
+          creato: serverTimestamp(),
+        });
+      } catch (e) {
+        // Profilo non salvato: si annulla l'account, così il numero resta libero per riprovare.
+        await deleteUser(user).catch(() => undefined);
+        throw e;
+      }
+      await aggiornaProfilo();
+    },
+    async login(telefono, password) {
+      try {
+        await signInWithEmailAndPassword(auth, emailDaTelefono(telefono), password);
+      } catch (e) {
+        const code = (e as { code?: string }).code ?? '';
+        if (code.includes('too-many-requests')) throw new ErroreUtente('Troppi tentativi. Riprova tra qualche minuto.');
+        throw new ErroreUtente('Telefono o password non corretti.');
+      }
+      if (!(await aggiornaProfilo())) {
+        await signOut(auth);
+        throw new ErroreUtente('Profilo cliente non trovato.');
       }
     },
-    accedi,
+    async logout() {
+      await signOut(auth);
+      await aggiornaProfilo();
+    },
+    onCliente(cb) {
+      ascoltatoriCliente.add(cb);
+      if (profiloCorrente !== undefined) cb(profiloCorrente);
+      else void aggiornaProfilo();
+      return () => ascoltatoriCliente.delete(cb);
+    },
+    async getParola() {
+      await cliente();
+      return leggiParola();
+    },
+
+    async listBottiglie(tutte = false) {
+      const q = tutte ? collection(db, 'bottiglie') : query(collection(db, 'bottiglie'), where('pubblicata', '==', true));
+      const s = await getDocs(q);
+      return s.docs.map((d) => ({ ...(d.data() as Bottiglia), id: d.id })).sort((a, b) => b.creata - a.creata);
+    },
+    async acquistaParti(bottigliaId, parti) {
+      const p = await cliente();
+      const ref = doc(db, 'bottiglie', bottigliaId);
+      const quotaId = nuovoId();
+      try {
+        return await runTransaction(db, async (tx) => {
+          const s = await tx.get(ref);
+          if (!s.exists()) throw new ErroreUtente('Bottiglia non trovata.');
+          const b = { ...(s.data() as Bottiglia), id: s.id };
+          const rimaste = b.parti - b.partiPrese;
+          if (b.stato !== 'aperta' || rimaste <= 0) throw new ErroreUtente('Questa bottiglia è già completa.');
+          if (parti < 1 || parti > rimaste) throw new ErroreUtente(`Sono rimasti solo ${rimaste} calici.`);
+          const partiPrese = b.partiPrese + parti;
+          const stato = partiPrese === b.parti ? 'completa' : 'aperta';
+          tx.set(doc(db, 'quote', quotaId), {
+            bottigliaId,
+            bottigliaNome: b.nome,
+            uid: p.uid,
+            nome: `${p.nome} ${p.cognome}`.trim(),
+            telefono: p.telefono,
+            parti,
+            importo: Math.round((b.prezzo / b.parti) * parti * 100) / 100,
+            quando: serverTimestamp(),
+          });
+          tx.update(ref, { partiPrese, stato, ultimaQuota: quotaId });
+          return { ...b, partiPrese, stato } as Bottiglia;
+        });
+      } catch (e) {
+        if (e instanceof ErroreUtente) throw e;
+        console.error(e);
+        throw new ErroreUtente('Acquisto non riuscito: qualcuno potrebbe aver preso gli ultimi calici. Riprova.');
+      }
+    },
+    async mieQuote() {
+      const p = await cliente();
+      const s = await getDocs(query(collection(db, 'quote'), where('uid', '==', p.uid)));
+      return s.docs.map((d) => ({ ...(d.data() as Quota), id: d.id, quando: ms(d.data().quando) })).sort((a, b) => b.quando - a.quando);
+    },
 
     async attivaNotifiche() {
       const { getMessaging, getToken, isSupported } = await import('firebase/messaging');
+      await auth.authStateReady();
+      if (!auth.currentUser) return 'accedi';
       if (!('Notification' in window) || !('serviceWorker' in navigator) || !(await isSupported())) {
         return 'non-supportate';
       }
@@ -120,7 +224,6 @@ export function creaFirebaseBackend(): Backend {
         await navigator.serviceWorker.ready;
         const token = await getToken(getMessaging(app), { vapidKey, serviceWorkerRegistration: reg });
         if (!token) return 'errore';
-        await utente();
         await setDoc(doc(db, 'pushTokens', token), { token, creato: serverTimestamp() });
         return 'attivate';
       } catch (e) {
@@ -209,10 +312,37 @@ export function creaFirebaseBackend(): Backend {
     },
     async deleteCliente(c) {
       await utenteAdmin();
-      const batch = writeBatch(db);
-      batch.delete(doc(db, 'clienti', c.id));
-      batch.delete(doc(db, 'telefoni', c.telefono));
-      await batch.commit();
+      await deleteDoc(doc(db, 'clienti', c.id));
+    },
+    async saveBottiglia(b) {
+      await utenteAdmin();
+      const { id, ...dati } = b;
+      const ref = doc(db, 'bottiglie', id);
+      const esiste = (await getDoc(ref)).exists();
+      const base = {
+        nome: dati.nome,
+        categoria: dati.categoria,
+        descrizione: dati.descrizione,
+        immagine: dati.immagine ?? '',
+        prezzo: dati.prezzo,
+        parti: dati.parti,
+        pubblicata: dati.pubblicata,
+      };
+      if (esiste) await updateDoc(ref, base);
+      else await setDoc(ref, { ...base, partiPrese: 0, stato: 'aperta', creata: Date.now(), ultimaQuota: '' });
+    },
+    async deleteBottiglia(id) {
+      await utenteAdmin();
+      await deleteDoc(doc(db, 'bottiglie', id));
+    },
+    async setStatoBottiglia(id, stato) {
+      await utenteAdmin();
+      await updateDoc(doc(db, 'bottiglie', id), { stato });
+    },
+    async listQuote(bottigliaId) {
+      await utenteAdmin();
+      const s = await getDocs(query(collection(db, 'quote'), where('bottigliaId', '==', bottigliaId)));
+      return s.docs.map((d) => ({ ...(d.data() as Quota), id: d.id, quando: ms(d.data().quando) })).sort((a, b) => a.quando - b.quando);
     },
     async inviaNotifica(titolo, testo, link) {
       const u = await utenteAdmin();

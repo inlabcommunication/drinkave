@@ -27,3 +27,9 @@ export function formatDataOra(ms: number): string {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 }
+
+/** Email tecnica usata per l'account Firebase del cliente: si accede con telefono + password. */
+export const emailDaTelefono = (telefono: string) => normalizzaTelefono(telefono).replace('+', '') + '@clienti.drinkave.app';
+
+export const euro = (n: number) =>
+  n.toLocaleString('it-IT', { style: 'currency', currency: 'EUR', minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });

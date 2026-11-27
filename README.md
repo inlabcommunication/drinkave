@@ -4,13 +4,15 @@ App per i clienti (installabile sul telefono) + area di gestione.
 
 **Per i clienti**
 - **Menu** con categorie, prezzi, ingredienti ed etichette.
-- **Parola segreta**: ci si iscrive con nome, cognome, telefono (email facoltativa) oppure si accede con il numero già registrato, e si scopre la parola d’ordine. Su quel dispositivo resta sbloccata.
+- **La mia area**: ogni cliente ha un profilo (nome, cognome, telefono, email facoltativa, password) e accede con **telefono + password**. Nell’area trova la **parola d’ordine**, **le sue bottiglie** e le notifiche.
+- **Bottiglia condivisa**: bottiglie divise in calici (es. 6). Il cliente sceglie quanti calici prendere; la bottiglia si riempie man mano e, quando tutti i calici sono presi, compare “Adesso sei pronto ad assaggiarla?”. Il pagamento si fa al locale.
 - **News**: articoli, eventi, novità (con immagine facoltativa).
 - **Podcast**: episodi da YouTube che si guardano **dentro l’app** (player incorporato, niente salto su YouTube). I video del canale [@Drinkavebereculturale](https://www.youtube.com/@Drinkavebereculturale) compaiono **in automatico** (vedi sotto).
 - **Notifiche push** (Android/desktop subito; su iPhone dopo “Aggiungi alla schermata Home”, iOS 16.4+).
 
 **Gestione** (`/#/gestione`, accesso con email e password)
 - Panoramica con numeri principali.
+- **Bottiglie**: crea bottiglie (nome, tipo, prezzo, numero di calici), vedi chi ha preso quanti calici con telefono e importo, segna come “servita”, avvia un nuovo giro.
 - Modifica **menu**, **parola segreta** (con avviso push opzionale), **news**, **podcast** (basta incollare il link YouTube).
 - **Clienti**: elenco con ricerca, filtro consenso marketing, eliminazione e **download Excel (.xlsx)**.
 - **Invio notifiche** a tutti i dispositivi iscritti.
@@ -27,7 +29,7 @@ npm run dev
 ## Mettere online (Firebase + Vercel)
 
 1. **Firebase** (console.firebase.google.com) → nuovo progetto, regione UE.
-   - *Authentication* → abilita **Anonimo** ed **Email/password**. In *Users* crea l’utente del titolare.
+   - *Authentication* → abilita **Email/password** (i clienti accedono con telefono + password: l’app usa un’email tecnica `numero@clienti.drinkave.app`). In *Users* crea l’utente del titolare.
    - *Firestore Database* → crea il database (es. `eur3`). In *Regole* incolla `firestore.rules` e pubblica.
    - In Firestore crea a mano la raccolta **`admins`** con un documento il cui ID è l’**UID** dell’utente del titolare (campo qualsiasi, es. `nome: "Titolare"`). Solo questi utenti entrano in gestione.
    - *Impostazioni progetto → Le tue app* → aggiungi app Web e copia i valori nelle variabili `VITE_FIREBASE_*`.
