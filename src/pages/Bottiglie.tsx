@@ -56,8 +56,13 @@ export default function BottigliePage({ id }: { id?: string }) {
         <h1>Bottiglia condivisa</h1>
         <Deco />
         <p className="muted" style={{ maxWidth: '34ch', margin: '8px auto 0' }}>
-          Ogni bottiglia è divisa in calici. Prendi la tua parte: quando tutti i calici sono presi, la bottiglia si stappa.
+          Bevi una grande bottiglia senza comprarla tutta: la dividi con altri ospiti.
         </p>
+        <div className="passi">
+          <div><b>1</b>Scegli quanti calici vuoi</div>
+          <div><b>2</b>Gli altri prendono i restanti</div>
+          <div><b>3</b>Piena? Si stappa e paghi al locale</div>
+        </div>
       </header>
 
       {bottiglie.caricamento && <Loading />}
@@ -127,23 +132,23 @@ function Dettaglio({
 
   return (
     <article className="bottle-detail">
-      <div className="bottle-stage">
-        <BottleViz parti={b.parti} prese={b.partiPrese} categoria={b.categoria} nome={b.nome} size={260} />
-      </div>
-      <Calici parti={b.parti} prese={b.partiPrese} mie={mie} />
-      <p className="center small muted" style={{ margin: '8px 0 0' }}>
-        {b.partiPrese} di {b.parti} calici presi{mie ? ` · ${mie} sono tuoi` : ''}
-      </p>
-
-      <div className="center" style={{ marginTop: 18 }}>
-        <div className="meta">{b.categoria}</div>
-        <h1 style={{ marginTop: 6 }}>{b.nome}</h1>
-        {b.descrizione && <p className="muted" style={{ maxWidth: '40ch', margin: '10px auto 0' }}>{b.descrizione}</p>}
-        <div className="row" style={{ justifyContent: 'center', gap: 18, marginTop: 14 }}>
-          <div><div className="stat">{euro(aCalice(b))}</div><div className="muted small">a calice</div></div>
-          <div><div className="stat" style={{ color: 'var(--muted)' }}>{euro(b.prezzo)}</div><div className="muted small">la bottiglia</div></div>
+      <div className="bottle-top">
+        <div className="bottle-stage">
+          <BottleViz parti={b.parti} prese={b.partiPrese} categoria={b.categoria} nome={b.nome} size={200} />
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div className="meta">{b.categoria}</div>
+          <h1 style={{ marginTop: 4 }}>{b.nome}</h1>
+          <div className="prezzo-calice" style={{ marginTop: 8 }}>
+            {euro(aCalice(b))} <span>a calice</span>
+          </div>
+          <div className="muted small">Bottiglia intera {euro(b.prezzo)}</div>
+          <div className="small" style={{ marginTop: 8 }}>
+            <strong>{b.partiPrese}</strong> di {b.parti} calici presi{mie ? ` · ${mie} tuoi` : ''}
+          </div>
         </div>
       </div>
+      <Calici parti={b.parti} prese={b.partiPrese} mie={mie} />
 
       {b.stato !== 'aperta' && (
         <div className="pronto">
@@ -202,6 +207,8 @@ function Dettaglio({
           )}
         </div>
       )}
+
+      {b.descrizione && <p className="muted" style={{ marginTop: 18 }}>{b.descrizione}</p>}
     </article>
   );
 }

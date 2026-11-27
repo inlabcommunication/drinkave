@@ -327,3 +327,35 @@ tr:last-child td { border-bottom: 0; }
 .badge.off { border-color: var(--err); color: var(--err); }
 .hero-cta2 { margin: 10px 0 0 8px; border-color: rgba(230, 200, 154, .6); color: var(--gold-2); }
 @media (max-width: 520px) { .hero-cta2 { margin-left: 0; } }
+
+/* ---------- Semplificazione (revisione UX) ---------- */
+/* barra in basso: etichette leggibili anche su schermi stretti */
+.bottomnav a { font-size: .66rem; letter-spacing: .03em; padding: 0 2px; white-space: nowrap; }
+.bottomnav a.key svg { color: inherit; filter: none; }
+/* home più compatta: i cerchi devono vedersi nel primo schermo */
+.hero-card { padding: 24px 18px 20px; }
+.hero-logo { width: min(52vw, 210px); }
+.tagline { font-size: 1.2rem; margin-top: 12px; }
+.hero-cta, .hero-cta2 { letter-spacing: .08em; }
+.hero-ctas { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 16px; }
+.hero-ctas .btn { width: min(100%, 320px); margin: 0; }
+.highlights a { font-size: .68rem; letter-spacing: .06em; }
+@media (max-width: 380px) {
+  .hero-card { padding: 18px 14px 16px; }
+  .hero-logo { width: 170px; }
+  .tagline { font-size: 1.05rem; }
+  .ring { width: 48px !important; height: 48px !important; }
+  .highlights a { font-size: .6rem; letter-spacing: .02em; }
+}
+/* come funziona */
+.passi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+.passi div { text-align: center; padding: 12px 6px; border: 1px solid var(--line); border-radius: 12px; background: rgba(15, 59, 58, .25); font-size: .78rem; color: var(--muted); line-height: 1.35; }
+.passi b { display: grid; place-items: center; width: 26px; height: 26px; margin: 0 auto 6px; border-radius: 50%; background: var(--red); color: var(--cream); font-family: var(--display); }
+/* pagina bottiglia: bottiglia accanto alle informazioni, azione subito visibile */
+.bottle-top { display: flex; gap: 16px; align-items: center; margin-top: 12px; }
+.bottle-top .bottle-stage { padding: 12px 14px; flex: none; }
+.bottle-top h1 { font-size: clamp(1.6rem, 7vw, 2.2rem); text-align: left; }
+/* gestione: tutte le voci visibili */
+.admin-nav { flex-wrap: wrap; overflow: visible; }
+.card.urgente { border-color: var(--red-2); background: radial-gradient(circle at 0% 0%, rgba(181, 34, 25, .35), transparent 70%), var(--card); }
+.card.urgente .stat { color: var(--gold-2); }

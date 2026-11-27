@@ -6,9 +6,11 @@ import { dataEvento } from './Prenota';
 import { Ornament } from '../components/Ui';
 import { backend } from '../lib/backend';
 import { useAsync } from '../lib/useAsync';
+import { useCliente } from '../lib/useCliente';
 import { euro, formatData } from '../lib/util';
 
 export default function Home() {
+  const cliente = useCliente();
   const bottiglia = useAsync(async () => (await (await backend()).listBottiglie()).find((b) => b.stato === 'aperta') ?? null);
   const evento = useAsync(async () => (await (await backend()).listEventi())[0] ?? null);
   const news = useAsync(async () => (await (await backend()).listNews()).slice(0, 2));
@@ -20,13 +22,14 @@ export default function Home() {
           <img className="hero-logo" src="/logo-drinkave.webp" alt="Drinkave · Bere culturale" width="240" height="93" />
           <p className="tagline">“Non tutti sanno dove siamo.”</p>
           <div className="eyebrow" style={{ marginTop: 6, color: 'var(--gold)' }}>Speakeasy · Laterza</div>
-          <a className="btn hero-cta" href="#/area">
-            <KeyRound size={16} /> Scopri la parola d’ordine
-          </a>
-          <a className="btn ghost hero-cta2" href="#/prenota">
-            <CalendarDays size={16} /> Prenota un tavolo
-          </a>
-          <p className="small" style={{ margin: '14px 0 0', color: '#d9b9a8', letterSpacing: '.04em' }}>Questo posto non dovrebbe esistere.</p>
+          <div className="hero-ctas">
+            <a className="btn hero-cta" href="#/area">
+              <KeyRound size={16} /> {cliente ? 'La tua parola' : 'Scopri la parola'}
+            </a>
+            <a className="btn ghost hero-cta2" href="#/prenota">
+              <CalendarDays size={16} /> Prenota un tavolo
+            </a>
+          </div>
         </div>
 
         <nav className="highlights" aria-label="Sezioni">

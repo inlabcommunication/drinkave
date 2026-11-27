@@ -20,7 +20,7 @@ const tabs = [
   { id: 'menu', label: 'Menu', icon: BookOpen },
   { id: 'prenota', label: 'Prenota', icon: CalendarDays },
   { id: 'bottiglie', label: 'Bottiglie', icon: Wine },
-  { id: 'area', label: 'Area', icon: UserRound, key: true },
+  { id: 'area', label: 'Profilo', icon: UserRound, key: true },
 ];
 
 export default function App() {

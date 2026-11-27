@@ -1,6 +1,7 @@
 import { Bell, BellOff, BellRing } from 'lucide-react';
 import { useState } from 'react';
 import { attivaNotifiche, isIOS, isStandalone, messaggioPush, statoNotifiche } from '../lib/push';
+import { useCliente } from '../lib/useCliente';
 
 /** Pulsante/scheda per attivare le notifiche push. */
 export function NotificheCard() {
@@ -8,6 +9,7 @@ export function NotificheCard() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const cliente = useCliente();
   const iosDaInstallare = isIOS() && !isStandalone();
 
   async function attiva() {
@@ -35,6 +37,11 @@ export function NotificheCard() {
         <p className="muted small" style={{ margin: 0 }}>{messaggioPush.negate}</p>
       ) : stato === 'non-supportate' ? (
         <p className="muted small" style={{ margin: 0 }}>{messaggioPush['non-supportate']}</p>
+      ) : cliente === null ? (
+        <>
+          <p className="muted small" style={{ margin: 0 }}>Ricevi un avviso per eventi, conferme delle prenotazioni e nuova parola d’ordine.</p>
+          <a className="btn ghost" href="#/area">Accedi per attivarle</a>
+        </>
       ) : (
         <>
           <p className="muted small" style={{ margin: 0 }}>Ricevi un avviso per eventi, serate speciali e quando cambia la parola d’ordine.</p>

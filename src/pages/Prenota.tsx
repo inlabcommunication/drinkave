@@ -51,13 +51,6 @@ export default function PrenotaPage({ sezione }: { sezione?: string }) {
         <button role="tab" aria-selected={tab === 'eventi'} onClick={() => vai('/prenota/eventi')}>Eventi</button>
       </div>
 
-      {cliente === null && (
-        <div className="card stack">
-          <p className="muted small" style={{ margin: 0 }}>Per prenotare entra nella tua area personale: ci vuole un minuto.</p>
-          <a className="btn block" href={`#/area?torna=${encodeURIComponent(tab === 'eventi' ? '/prenota/eventi' : '/prenota')}`}>Accedi o registrati</a>
-        </div>
-      )}
-
       {tab === 'tavolo' ? <Tavolo abilitato={!!cliente} /> : <Eventi abilitato={!!cliente} />}
     </div>
   );
@@ -132,10 +125,18 @@ function Tavolo({ abilitato }: { abilitato: boolean }) {
         <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} rows={3} placeholder="Compleanno, allergie, preferenze…" />
       </label>
       {errore && <div className="msg err">{errore}</div>}
-      <button className="btn block" type="submit" disabled={busy || !abilitato}>
-        <CalendarDays size={16} /> {busy ? 'Invio…' : 'Richiedi il tavolo'}
-      </button>
-      <p className="muted small center" style={{ margin: 0 }}>La prenotazione è valida dopo la nostra conferma.</p>
+      {abilitato ? (
+        <button className="btn block" type="submit" disabled={busy}>
+          <CalendarDays size={16} /> {busy ? 'Invio…' : 'Richiedi il tavolo'}
+        </button>
+      ) : (
+        <a className="btn block" href={`#/area?torna=${encodeURIComponent('/prenota')}`}>
+          Accedi per prenotare
+        </a>
+      )}
+      <p className="muted small center" style={{ margin: 0 }}>
+        {abilitato ? 'La prenotazione è valida dopo la nostra conferma.' : 'Serve un profilo (un minuto): così ritrovi le tue prenotazioni.'}
+      </p>
     </form>
   );
 }
@@ -195,6 +196,9 @@ function CardEvento({ e, abilitato, onAggiorna }: { e: Evento; abilitato: boolea
       {e.descrizione && <p className="muted small" style={{ margin: 0, whiteSpace: 'pre-line' }}>{e.descrizione}</p>}
       <div className="progress" aria-hidden="true"><span style={{ width: `${(e.postiPrenotati / e.posti) * 100}%` }} /></div>
       {fatto && <div className="msg ok">{fatto}</div>}
+      {liberi > 0 && !abilitato && (
+        <a className="btn" href={`#/area?torna=${encodeURIComponent('/prenota/eventi')}`}>Accedi per prenotare</a>
+      )}
       {liberi > 0 && abilitato && !aperto && (
         <button className="btn" onClick={() => { setFatto(null); setAperto(true); }}>Prenota il tuo posto</button>
       )}
